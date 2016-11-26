@@ -33,7 +33,8 @@ public class Registry {
     private IndicatorManager indicatorManager;
     private PixelizeManager pixelizeManager;
     private Inventory inventory;
-    private NetworkThread networkThread;
+    //private NetworkThread networkThread;
+    private NetworkThread2 networkThread;
     private int invSlotFrom = -1;
     private ItemContainer invItemContainerFrom;
     private PlayerContainer invPlayerContainerFrom;
@@ -55,6 +56,7 @@ public class Registry {
     private int weaponLevel = 1;
     private String armorType = "";
     private int armorLevel = 1;
+    public boolean isSaving = false;
 
     public Registry() {
     }
@@ -103,7 +105,7 @@ public class Registry {
         return pixelizeManager;
     }
 
-    public NetworkThread getNetworkThread() {
+    public NetworkThread2 getNetworkThread() {
         return networkThread;
     }
 
@@ -596,7 +598,7 @@ public class Registry {
         pixelizeManager = pm;
     }
 
-    public void setNetworkThread(NetworkThread nt) {
+    public void setNetworkThread(NetworkThread2 nt) {
         networkThread = nt;
     }
 

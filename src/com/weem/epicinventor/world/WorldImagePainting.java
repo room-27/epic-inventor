@@ -236,7 +236,7 @@ public class WorldImagePainting {
     
     public int[][] spawnCaves(int[][] currentBlockArray, int caves, int minX, int maxX, int minZ, int maxZ) {
         ArrayList maxCaveSpots = new ArrayList();
-        for(int i = 0; i < caves*2; i++) {
+        for(int i = 0; i < caves*3; i++) {
             int iMax = getMaxZCaveSpot();
             int[] caveSpot = null;
             if(iMax > -1) {
@@ -296,7 +296,7 @@ public class WorldImagePainting {
             
             //new level
         }
-        currentBlockArray = spawnCaves(currentBlockArray, 3, xMin, xMax, zMin, zMax);
+        currentBlockArray = spawnCaves(currentBlockArray, 5, xMin, xMax, zMin, zMax);
         noExitImages.clear();
         return currentBlockArray;
     }
@@ -538,7 +538,8 @@ public class WorldImagePainting {
     public boolean isCaveBG(int blockTypeId) {
         boolean isCave = false;
         if(blockTypeId > 0) {
-            if(blockManager.getBlockTypeById((short)blockTypeId).isBackground()) {
+            BlockType bt = blockManager.getBlockTypeById((short)blockTypeId);
+            if(bt != null && bt.isBackground()) {
                 isCave = true;
             }
         }
@@ -566,12 +567,13 @@ public class WorldImagePainting {
             for(int x = 0; x < pixels.length; x++) {
                 if(zStart+z+20 < ground[xStart+x]) {
                     currentBlockArray[xStart+x][zStart+z] = paintBlock(currentBlockArray[xStart+x][zStart+z], pixels[x][z]);
-                    if(z == pixels[0].length - 1 && isCaveBG(currentBlockArray[xStart+x][zStart+z])) {
+                    if(z == pixels[0].length - 2 && isCaveBG(currentBlockArray[xStart+x][zStart+z])) {
                         if(caveSpot[0] == -1) {
                             caveSpot[0] = zStart+z;
                             caveSpot[1] = xStart+x;
-                            caveSpot[2] = xStart+x;
-                        } else {
+                            //caveSpot[2] = xStart+x+4;
+                        }
+                        if(pixels[x+1][z] != 0 && caveSpot[2] == -1 && !isCaveBG(pixels[x+1][z])) {
                             caveSpot[2] = xStart+x;
                         }
                     }

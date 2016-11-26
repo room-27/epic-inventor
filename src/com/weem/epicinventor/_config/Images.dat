@@ -53,6 +53,8 @@ o HUD/Master/Trash.png
 o HUD/Master/Value.png
 o HUD/Master/Weapons.png
 o HUD/Master/WeaponsOn.png
+o HUD/Oobaboo/BG.png
+o HUD/Oobaboo/ButtonTrade.png
 o HUD/Pause/BG.png
 o HUD/Pause/ButtonCrafting.png
 o HUD/Pause/ButtonCredits.png
@@ -131,11 +133,14 @@ o HUD/Credits/ButtonMainMenu.png
 o HUD/WeaponInfo/BG.png
 
 //Misc
+o Misc/ArrowLeft.png
+o Misc/ArrowRight.png
 o Misc/Bar.png
 o Misc/BarBG.png
 o Misc/ChatBubble.png
 o Misc/Danger.png
 o Misc/LargeInventor.png
+o Misc/MinimapFrame.png
 o Misc/NameBG.png
 o Misc/NoPower.png
 o Misc/ProgressBar.gif
@@ -184,6 +189,9 @@ o Monsters/AggressiveSnake/Falling.png
 o Monsters/AggressiveSnake/Jumping.png
 o Monsters/AggressiveSnake/Standing.png
 s Monsters/AggressiveSnake/Walking.png 2
+o Monsters/BlueThorn/BlueThorn1.png
+o Monsters/BlueThorn/BlueThorn2.png
+o Monsters/BlueThorn/BlueThorn3.png
 s Monsters/BossOrc/Attacking.png 4
 o Monsters/BossOrc/Falling.png
 o Monsters/BossOrc/Jumping.png
@@ -232,6 +240,13 @@ o Monsters/Snail/Falling.png
 o Monsters/Snail/Jumping.png
 o Monsters/Snail/Standing.png
 s Monsters/Snail/Walking.png 6
+o Monsters/SnailRider/Attacking.png
+o Monsters/SnailRider/Falling.png
+o Monsters/SnailRider/Flapping.png
+o Monsters/SnailRider/Jumping.png
+o Monsters/SnailRider/RangeAttacking.png
+o Monsters/SnailRider/Standing.png
+s Monsters/SnailRider/Walking.png 6
 s Monsters/Snake/Attacking.png 2
 o Monsters/Snake/Falling.png
 o Monsters/Snake/Jumping.png
@@ -242,11 +257,30 @@ o Monsters/SpiderWorm/Falling.png
 o Monsters/SpiderWorm/Jumping.png
 o Monsters/SpiderWorm/Standing.png
 s Monsters/SpiderWorm/Walking.png 6
+o Monsters/VineThorn/VineThorn1.png
+o Monsters/VineThorn/VineThorn2.png
 s Monsters/ZombieWalrus/Attacking.png 2
 o Monsters/ZombieWalrus/Falling.png
 o Monsters/ZombieWalrus/Jumping.png
 o Monsters/ZombieWalrus/Standing.png
 s Monsters/ZombieWalrus/Walking.png 2
+
+//Oobaboo
+o Oobaboo/Healer/Falling.png
+o Oobaboo/Healer/Jumping.png
+o Oobaboo/Healer/Standing.png
+s Oobaboo/Healer/Swinging.png 4
+s Oobaboo/Healer/Walking.png 4
+o Oobaboo/Gatherer/Falling.png
+s Oobaboo/Gatherer/Gathering.png 4
+o Oobaboo/Gatherer/Jumping.png
+o Oobaboo/Gatherer/Standing.png
+s Oobaboo/Gatherer/Walking.png 4
+o Oobaboo/Warrior/Falling.png
+o Oobaboo/Warrior/Jumping.png
+o Oobaboo/Warrior/Standing.png
+s Oobaboo/Warrior/Swinging.png 4
+s Oobaboo/Warrior/Walking.png 4
 
 //Effects
 o Effects/AttackBonus.png
@@ -268,6 +302,7 @@ o Items/BookShelf.png
 o Items/Boomerang.png
 o Items/Bow.png
 o Items/Box.png
+o Items/BrandonsAbacus.png
 o Items/Bread.png
 o Items/BrokenMirror.png
 o Items/Cabin.png
@@ -287,6 +322,7 @@ o Items/CopperGear.png
 o Items/CopperHammer.png
 o Items/CopperHead.png
 o Items/CopperLegs.png
+o Items/CopperLocator.png
 o Items/CopperMine.png
 o Items/CopperPanel.png
 o Items/CopperRod.png
@@ -296,10 +332,12 @@ o Items/CopperTube.png
 o Items/Crate.png
 o Items/CrossBow.png
 o Items/Diamond.png
+o Items/DiamondLocator.png
 o Items/Disguise.png
 o Items/Dye.png
 o Items/EagleBlade.png
 o Items/Emerald.png
+o Items/EmeraldLocator.png
 o Items/EmeraldTeleporter.png
 o Items/FanBlade.png
 o Items/Fang.png
@@ -309,6 +347,7 @@ o Items/FireGland.png
 o Items/FlameCannon.png
 o Items/Flower.png
 o Items/Forge.png
+o Items/ForrestsLaptop.png
 o Items/Fur.png
 o Items/Gold.png
 o Items/GoldBlade.png
@@ -319,6 +358,7 @@ o Items/GoldGear.png
 o Items/GoldHammer.png
 o Items/GoldHead.png
 o Items/GoldLegs.png
+o Items/GoldLocator.png
 o Items/GoldMine.png
 o Items/GoldPanel.png
 o Items/GoldRod.png
@@ -339,6 +379,7 @@ o Items/IronGear.png
 o Items/IronHammer.png
 o Items/IronHead.png
 o Items/IronLegs.png
+o Items/IronLocator.png
 o Items/IronMine.png
 o Items/IronPanel.png
 o Items/IronRod.png
@@ -366,6 +407,7 @@ o Items/Pig.png
 o Items/Platinum.png
 o Items/PlatinumBolt.png
 o Items/PlatinumGear.png
+o Items/PlatinumLocator.png
 o Items/PlatinumMine.png
 o Items/PlatinumPanel.png
 o Items/PlatinumRod.png
@@ -395,8 +437,10 @@ o Items/RobotStoneBlade.png
 o Items/RobotWoodArmor.png
 o Items/Rope.png
 o Items/Ruby.png
+o Items/RubyLocator.png
 o Items/RubyTeleporter.png
 o Items/Sapphire.png
+o Items/SapphireLocator.png
 o Items/SapphireTeleporter.png
 o Items/SawBlade.png
 o Items/SawSword.png
@@ -418,6 +462,7 @@ o Items/SilverGear.png
 o Items/SilverHammer.png
 o Items/SilverHead.png
 o Items/SilverLegs.png
+o Items/SilverLocator.png
 o Items/SilverMine.png
 o Items/SilverPanel.png
 o Items/SilverRod.png
@@ -448,6 +493,7 @@ o Items/TulipSandwich.png
 o Items/Tusk.png
 o Items/WeaponRack.png
 o Items/Web.png
+o Items/WeemsDiceBag.png
 o Items/WheatSeed.png
 o Items/WindMill.png
 o Items/Wood.png
@@ -721,6 +767,16 @@ o Weapons/StoneSword.png
 o Weapons/WoodHammer.png
 
 //Particles
+o Particles/Bandage1.png
+o Particles/Bandage2.png
+o Particles/Bandage3.png
+o Particles/Bandage4.png
+o Particles/Bandage5.png
+o Particles/Bandage6.png
+o Particles/Bandage7.png
+o Particles/Bandage8.png
+o Particles/Bandage9.png
+o Particles/Bandage10.png
 o Particles/Flame1.png
 o Particles/Flame2.png
 o Particles/Flame3.png
@@ -729,6 +785,16 @@ o Particles/Flame5.png
 o Particles/Flame6.png
 o Particles/Flame7.png
 o Particles/Flame8.png
+o Particles/Leaf1.png
+o Particles/Leaf2.png
+o Particles/Leaf3.png
+o Particles/Leaf4.png
+o Particles/Leaf5.png
+o Particles/Leaf6.png
+o Particles/Leaf7.png
+o Particles/Leaf8.png
+o Particles/Leaf9.png
+o Particles/Leaf10.png
 
 //Projectiles
 o Projectiles/Arrow.png
@@ -738,82 +804,6 @@ o Projectiles/FireBall.png
 o Projectiles/Goo.png
 o Projectiles/Pebble.png
 o Projectiles/Web.png
-
-//Placeables - Cursors
-o Placeables/Cursor/AutoXBow Placeables/Cursor/AutoXBow.png 1.0 -1 -1 -1
-o Placeables/Cursor/BladeTrap Placeables/Cursor/BladeTrap.png 1.0 -1 -1 -1
-o Placeables/Cursor/BookShelf Placeables/Cursor/BookShelf.png 1.0 -1 -1 -1
-o Placeables/Cursor/Box Placeables/Cursor/Box.png 1.0 -1 -1 -1
-o Placeables/Cursor/Cabin Placeables/Cursor/Cabin.png 1.0 -1 -1 -1
-o Placeables/Cursor/Chest Placeables/Cursor/Chest.png 1.0 -1 -1 -1
-o Placeables/Cursor/CopperMine Placeables/Cursor/CopperMine.png 1.0 -1 -1 -1
-o Placeables/Cursor/Crate Placeables/Cursor/Crate.png 1.0 -1 -1 -1
-o Placeables/Cursor/Container Placeables/Cursor/ItemContainer.png 1.0 -1 -1 -1
-o Placeables/Cursor/EmeraldTeleporter Placeables/Cursor/EmeraldTeleporter.png 1.0 -1 -1 -1
-o Placeables/Cursor/Forge Placeables/Cursor/Forge.png 1.0 -1 -1 -1
-o Placeables/Cursor/GoldMine Placeables/Cursor/GoldMine.png 1.0 -1 -1 -1
-o Placeables/Cursor/IronMine Placeables/Cursor/IronMine.png 1.0 -1 -1 -1
-o Placeables/Cursor/LargeFarm Placeables/Cursor/LargeFarm.png 1.0 -1 -1 -1
-o Placeables/Cursor/LargeSafe Placeables/Cursor/LargeSafe.png 1.0 -1 -1 -1
-o Placeables/Cursor/LionFlyStatue Placeables/Cursor/LionFlyStatue.png 1.0 -1 -1 -1
-o Placeables/Cursor/MedicKit Placeables/Cursor/MedicKit.png 1.0 -1 -1 -1
-o Placeables/Cursor/MediumSafe Placeables/Cursor/MediumSafe.png 1.0 -1 -1 -1
-o Placeables/Cursor/Pasture Placeables/Cursor/Pasture.png 1.0 -1 -1 -1
-o Placeables/Cursor/PlatinumMine Placeables/Cursor/PlatinumMine.png 1.0 -1 -1 -1
-o Placeables/Cursor/PottedFlower Placeables/Cursor/PottedFlower.png 1.0 -1 -1 -1
-o Placeables/Cursor/RubyTeleporter Placeables/Cursor/RubyTeleporter.png 1.0 -1 -1 -1
-o Placeables/Cursor/SapphireTeleporter Placeables/Cursor/SapphireTeleporter.png 1.0 -1 -1 -1
-o Placeables/Cursor/ScareCrow Placeables/Cursor/ScareCrow.png 1.0 -1 -1 -1
-o Placeables/Cursor/SawMill Placeables/Cursor/SawMill.png 1.0 -1 -1 -1
-o Placeables/Cursor/SilverMine Placeables/Cursor/SilverMine.png 1.0 -1 -1 -1
-o Placeables/Cursor/SmallFarm Placeables/Cursor/SmallFarm.png 1.0 -1 -1 -1
-o Placeables/Cursor/SmallSafe Placeables/Cursor/SmallSafe.png 1.0 -1 -1 -1
-o Placeables/Cursor/SteamEngine Placeables/Cursor/SteamEngine.png 1.0 -1 -1 -1
-o Placeables/Cursor/StoneMine Placeables/Cursor/StoneMine.png 1.0 -1 -1 -1
-o Placeables/Cursor/ThornTrap Placeables/Cursor/ThornTrap.png 1.0 -1 -1 -1
-o Placeables/Cursor/TownBlock Placeables/Cursor/TownBlock.png 1.0 -1 -1 -1
-o Placeables/Cursor/TownHall Placeables/Cursor/TownHall.png 1.0 -1 -1 -1
-o Placeables/Cursor/WeaponRack Placeables/Cursor/WeaponRack.png 1.0 -1 -1 -1
-o Placeables/Cursor/WindMill Placeables/Cursor/WindMill.png 1.0 -1 -1 -1
-o Placeables/Cursor/WorkBench Placeables/Cursor/WorkBench.png 1.0 -1 -1 -1
-
-//Placeables - Placed
-o Placeables/Placed/AutoXBow.png
-s Placeables/Placed/BladeTrap.png 8
-o Placeables/Placed/BookShelf.png
-o Placeables/Placed/Box.png
-o Placeables/Placed/Cabin.png
-o Placeables/Placed/Chest.png
-o Placeables/Placed/CopperMine.png
-o Placeables/Placed/Crate.png
-o Placeables/Placed/Container.png
-s Placeables/Placed/EmeraldTeleporter.png 10
-s Placeables/Placed/Forge.png 7
-o Placeables/Placed/GoldMine.png
-o Placeables/Placed/IronMine.png
-o Placeables/Placed/LargeFarm.png
-o Placeables/Placed/LargeSafe.png
-o Placeables/Placed/LionFlyStatue.png
-o Placeables/Placed/ItemContainer.png
-o Placeables/Placed/MedicKit.png
-o Placeables/Placed/MediumSafe.png
-o Placeables/Placed/Pasture.png
-o Placeables/Placed/PlatinumMine.png
-o Placeables/Placed/PottedFlower.png
-s Placeables/Placed/RubyTeleporter.png 10
-s Placeables/Placed/SapphireTeleporter.png 10
-s Placeables/Placed/SawMill.png 6
-o Placeables/Placed/ScareCrow.png
-o Placeables/Placed/SilverMine.png
-o Placeables/Placed/SmallFarm.png
-o Placeables/Placed/SmallSafe.png
-s Placeables/Placed/SteamEngine.png 6
-o Placeables/Placed/StoneMine.png
-o Placeables/Placed/ThornTrap.png
-s Placeables/Placed/TownHall.png 5
-o Placeables/Placed/WeaponRack.png
-s Placeables/Placed/WindMill.png 4
-o Placeables/Placed/WorkBench.png
 
 //Blocks
 o Blocks/CaveBG01.gif

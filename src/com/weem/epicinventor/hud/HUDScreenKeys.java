@@ -223,14 +223,14 @@ public class HUDScreenKeys extends HUD {
             hudArea = hudAreas.get(i);
             if (hudArea == ha) {
                 if (hudArea.getType().equals("donate")) {
-                    String url = "http://epicinventor.com/donate.php";
+                    String url = "http://www.epicinventor.com/donate.html";
 
                     try {
                         Desktop.getDesktop().browse(java.net.URI.create(url));
                     } catch (Exception e) {
                     }
                 } else if (hudArea.getType().equals("help")) {
-                    String url = "http://epicinventor.com/help";
+                    String url = "http://www.epicinventor.com/help.html";
 
                     try {
                         Desktop.getDesktop().browse(java.net.URI.create(url));

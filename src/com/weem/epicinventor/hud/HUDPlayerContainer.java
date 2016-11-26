@@ -184,8 +184,9 @@ public class HUDPlayerContainer extends HUD {
                             } else if (registry.getInvHUDFrom().equals("QuickBar")) {
                                 if (!registry.getIsQuickBarLocked()) {
                                     if (!itemName.isEmpty() && qty > 0 && playerContainer != null) {
-                                        hudManager.playerDeleteInventory(selectedStart, 0);
-                                        playerContainer.addItem(i, itemName, qty, level);
+                                        if(playerContainer.addItem(i, itemName, qty, level)) {
+                                            hudManager.playerDeleteInventory(selectedStart, 0);
+                                        }
                                     }
                                 }
                             } else if (registry.getInvHUDFrom().equals("MasterHead")) {

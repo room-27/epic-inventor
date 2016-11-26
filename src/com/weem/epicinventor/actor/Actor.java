@@ -40,12 +40,15 @@ public abstract class Actor implements Serializable {
     transient protected Registry registry;
     transient protected Arc2D.Double attackArc;
     transient protected int attackArcOffsetX, attackArcOffsetY;
+    transient protected boolean shouldRender = true;
     protected int mapX, lastMapY, mapY;
+    transient protected int lastMapX;
     transient protected int[] yx, ycm;
     protected int width, height;
     protected int xMoveSize;
     protected boolean stateChanged;
     protected String image = "";
+    transient protected String lastImage = "";
     protected int numAnimationFrames;
     protected int currentAnimationFrame;
     protected int animationFrameDuration;
@@ -165,9 +168,13 @@ public abstract class Actor implements Serializable {
     public String getId() {
         return id;
     }
-    
+
     public void projectileReturned() {
         projectileOut = false;
+    }
+
+    public boolean isProjectileOut() {
+        return projectileOut;
     }
 
     public void hide() {
@@ -176,11 +183,11 @@ public abstract class Actor implements Serializable {
     public boolean getIsHiding() {
         return false;
     }
-    
+
     public boolean getIsStomping() {
         return isStomping;
     }
-    
+
     public void setIsStomping(boolean s) {
         isStomping = s;
     }
@@ -188,14 +195,12 @@ public abstract class Actor implements Serializable {
     public void moveLeft() {
         isStill = false;
         isTryingToMove = true;
-        stateChanged = true;
         facing = Facing.LEFT;
     }
 
     public void moveRight() {
         isStill = false;
         isTryingToMove = true;
-        stateChanged = true;
         facing = Facing.RIGHT;
     }
 
@@ -436,7 +441,6 @@ public abstract class Actor implements Serializable {
 
     public void stopMove() {
         isTryingToMove = false;
-        stateChanged = true;
         isStill = true;
     }
 
@@ -477,7 +481,6 @@ public abstract class Actor implements Serializable {
         stunEnded = registry.currentTime + time;
         if (statusStun) {
             //stopMove();
-            stateChanged = true;
             updateImage();
             actionMode = Actor.ActionMode.NONE;
         }
@@ -488,14 +491,18 @@ public abstract class Actor implements Serializable {
     }
 
     protected void setImage(String name) {
-        BufferedImage im = registry.getImageLoader().getImage(name);
-        if (im != null) {
-            image = name;
+        if (!name.equals(lastImage)) {
+            BufferedImage im = registry.getImageLoader().getImage(name);
+            if (im != null) {
+                image = name;
 
-            width = im.getWidth();
-            height = im.getHeight();
-            isAnimating = false;
+                width = im.getWidth();
+                height = im.getHeight();
+                isAnimating = false;
+            }
         }
+
+        lastImage = name;
     }
 
     public int attackDamageAndKnockBack(Actor source, Arc2D.Double arc, Point mapPoint, int damage, int kbX, int kbY, String weaponType) {
@@ -533,7 +540,7 @@ public abstract class Actor implements Serializable {
         knockBackX = x;
         jump(y);
         if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdateMonster um = new UpdateMonster(this.getId());
                 um.mapX = this.getMapX();
                 um.mapY = this.getMapY();
@@ -668,24 +675,28 @@ public abstract class Actor implements Serializable {
     }
 
     protected void loopImage(String name, double fDuration) {
-        if (registry.getImageLoader().numImages(name) > 1) {
-            image = name;
+        if (!name.equals(lastImage)) {
+            if (registry.getImageLoader().numImages(name) > 1) {
+                image = name;
 
-            BufferedImage im = registry.getImageLoader().getImage(name);
+                BufferedImage im = registry.getImageLoader().getImage(name);
 
-            numAnimationFrames = registry.getImageLoader().numImages(name);
+                numAnimationFrames = registry.getImageLoader().numImages(name);
 
-            width = im.getWidth();
-            height = im.getHeight();
+                width = im.getWidth();
+                height = im.getHeight();
 
-            currentAnimationFrame = 0;
-            animationFrameDuration = (int) (1000 * fDuration);
-            animationFrameUpdateTime = (long) (registry.currentTime + animationFrameDuration);
+                currentAnimationFrame = 0;
+                animationFrameDuration = (int) (1000 * fDuration);
+                animationFrameUpdateTime = (long) (registry.currentTime + animationFrameDuration);
 
-            isAnimating = true;
-        } else {
-            setImage(name);
+                isAnimating = true;
+            } else {
+                setImage(name);
+            }
         }
+
+        lastImage = name;
     }
 
     protected void loopImage(String name) {
@@ -970,7 +981,7 @@ public abstract class Actor implements Serializable {
         return currentAttackType;
     }
 
-    public int getAttankRange() {
+    public int getAttackRange() {
         return attackRange;
     }
 
@@ -996,7 +1007,6 @@ public abstract class Actor implements Serializable {
     }
 
     public void setFacing(Facing f) {
-        stateChanged = true;
         facing = f;
     }
 
@@ -1090,7 +1100,7 @@ public abstract class Actor implements Serializable {
     }
 
     public void updateFalling() {
-        if(this.getTotalHitPoints() == 6000) {
+        if (this.getTotalHitPoints() == 6000) {
             //System.out.println(lastMapY + ":" + mapY + ":" + fallSize);
         }
         if (lastMapY - mapY < fallSize && fallSize > 0) {
@@ -1150,12 +1160,20 @@ public abstract class Actor implements Serializable {
         return vertMoveMode;
     }
 
+    public int getXMoveSize() {
+        return xMoveSize;
+    }
+
+    public void setXMoveSize(int x) {
+        xMoveSize = x;
+    }
+
     public void setVertMoveMode(VertMoveMode v, boolean sc) {
         if (sc) {
             stateChanged = sc;
         }
         vertMoveMode = v;
-        if(vertMoveMode == VertMoveMode.NOT_JUMPING) {
+        if (vertMoveMode == VertMoveMode.NOT_JUMPING) {
             completeFall = 0;
         }
     }
@@ -1179,18 +1197,6 @@ public abstract class Actor implements Serializable {
 
         if (statusStun && registry.currentTime >= stunEnded) {
             this.setStatusStun(false, 0);
-            if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
-                    UpdatePlayer up = new UpdatePlayer(this.getId());
-                    up.mapX = this.getMapX();
-                    up.mapY = this.getMapY();
-                    up.vertMoveMode = this.getVertMoveMode();
-                    up.dataBoolean = false;
-                    up.dataLong = 0;
-                    up.action = "SetStun";
-                    registry.getNetworkThread().sendData(up);
-                }
-            }
         }
         if (isActive && isFeared) {
             long p = registry.getImageLoader().getPeriod();
@@ -1224,93 +1230,101 @@ public abstract class Actor implements Serializable {
         }
 
         setStatuses();
+
+        if (spriteRect.intersects(manager.getPanelRect())) {
+            shouldRender = true;
+        } else {
+            shouldRender = false;
+        }
     }
 
     public void render(Graphics g) {
-        int xPos = 0, yPos = 0;
-        BufferedImage im;
-        BufferedImage imLeft;
-        AffineTransform tx;
-        AffineTransformOp op;
+        if (shouldRender) {
+            int xPos = 0, yPos = 0;
+            BufferedImage im;
+            BufferedImage imLeft;
+            AffineTransform tx;
+            AffineTransformOp op;
 
-        if (isChatting) {
-            im = registry.getImageLoader().getImage("Misc/ChatBubble");
+            if (isChatting) {
+                im = registry.getImageLoader().getImage("Misc/ChatBubble");
 
-            if (facing == Facing.LEFT) {
-                xPos = manager.mapToPanelX(mapX - width + 25);
-                yPos = manager.mapToPanelY(mapY + 10);
-            } else {
-                xPos = manager.mapToPanelX(mapX + width - 25);
-                yPos = manager.mapToPanelY(mapY + 10);
-            }
-
-            //flip the yPos since drawing happens top down versus bottom up
-            yPos = manager.getPHeight() - yPos;
-
-            //subtract the height since points are bottom left and drawing starts from top left
-            yPos -= height;
-
-            if (im != null) {
                 if (facing == Facing.LEFT) {
-                    tx = AffineTransform.getScaleInstance(1, -1);
-                    tx = AffineTransform.getScaleInstance(-1, 1);
-                    tx.translate(-width, 0);
-                    op = new AffineTransformOp(tx, AffineTransformOp.TYPE_BILINEAR);
-                    imLeft = op.filter(im, null);
-                    if (imLeft != null) {
-                        g.drawImage(imLeft, xPos, yPos, null);
-                    }
+                    xPos = manager.mapToPanelX(mapX - width + 25);
+                    yPos = manager.mapToPanelY(mapY + 10);
                 } else {
-                    g.drawImage(im, xPos, yPos, null);
+                    xPos = manager.mapToPanelX(mapX + width - 25);
+                    yPos = manager.mapToPanelY(mapY + 10);
+                }
+
+                //flip the yPos since drawing happens top down versus bottom up
+                yPos = manager.getPHeight() - yPos;
+
+                //subtract the height since points are bottom left and drawing starts from top left
+                yPos -= height;
+
+                if (im != null) {
+                    if (facing == Facing.LEFT) {
+                        tx = AffineTransform.getScaleInstance(1, -1);
+                        tx = AffineTransform.getScaleInstance(-1, 1);
+                        tx.translate(-width, 0);
+                        op = new AffineTransformOp(tx, AffineTransformOp.TYPE_BILINEAR);
+                        imLeft = op.filter(im, null);
+                        if (imLeft != null) {
+                            g.drawImage(imLeft, xPos, yPos, null);
+                        }
+                    } else {
+                        g.drawImage(im, xPos, yPos, null);
+                    }
                 }
             }
-        }
 
-        if (showRect && spriteRect != null) {
-            xPos = manager.mapToPanelX(spriteRect.x);
-            yPos = manager.mapToPanelY(spriteRect.y);
+            if (showRect && spriteRect != null) {
+                xPos = manager.mapToPanelX(spriteRect.x);
+                yPos = manager.mapToPanelY(spriteRect.y);
 
-            //flip the yPos since drawing happens top down versus bottom up
-            yPos = manager.getPHeight() - yPos;
+                //flip the yPos since drawing happens top down versus bottom up
+                yPos = manager.getPHeight() - yPos;
 
-            //subtract the height since points are bottom left and drawing starts from top left
-            yPos -= height;
+                //subtract the height since points are bottom left and drawing starts from top left
+                yPos -= height;
 
-            g.setColor(Color.red);
-            g.drawRect(xPos, yPos, spriteRect.width, spriteRect.height);
-        }
-
-        if (showGoals && debugInfo != null) {
-            xPos = manager.mapToPanelX(mapX);
-            yPos = manager.mapToPanelY(mapY + height + 20);
-
-            //flip the yPos since drawing happens top down versus bottom up
-            yPos = manager.getPHeight() - yPos;
-
-            //subtract the height since points are bottom left and drawing starts from top left
-            yPos -= height;
-
-            String[] parts = debugInfo.split("\\|");
-            for (int i = 0; i < parts.length; i++) {
-                g.setColor(Color.RED);
-                g.setFont(new Font("SansSerif", Font.BOLD, 18));
-                g.drawString(parts[i], xPos, yPos + (i * 15));
+                g.setColor(Color.red);
+                g.drawRect(xPos, yPos, spriteRect.width, spriteRect.height);
             }
-        }
 
-        if (showRect && attackRect != null) {
-            xPos = manager.mapToPanelX(attackRect.x);
-            yPos = manager.mapToPanelY(attackRect.y);
+            if (showGoals && debugInfo != null) {
+                xPos = manager.mapToPanelX(mapX);
+                yPos = manager.mapToPanelY(mapY + height + 20);
 
-            //flip the yPos since drawing happens top down versus bottom up
-            yPos = manager.getPHeight() - yPos;
+                //flip the yPos since drawing happens top down versus bottom up
+                yPos = manager.getPHeight() - yPos;
 
-            //subtract the height since points are bottom left and drawing starts from top left
-            yPos -= attackRect.height + topOffset;
+                //subtract the height since points are bottom left and drawing starts from top left
+                yPos -= height;
+
+                String[] parts = debugInfo.split("\\|");
+                for (int i = 0; i < parts.length; i++) {
+                    g.setColor(Color.RED);
+                    g.setFont(new Font("SansSerif", Font.BOLD, 18));
+                    g.drawString(parts[i], xPos, yPos + (i * 15));
+                }
+            }
+
+            if (showRect && attackRect != null) {
+                xPos = manager.mapToPanelX(attackRect.x);
+                yPos = manager.mapToPanelY(attackRect.y);
+
+                //flip the yPos since drawing happens top down versus bottom up
+                yPos = manager.getPHeight() - yPos;
+
+                //subtract the height since points are bottom left and drawing starts from top left
+                yPos -= attackRect.height + topOffset;
 
 
-            g.setColor(Color.red);
-            g.drawRect(xPos, yPos, attackRect.width, attackRect.height);
+                g.setColor(Color.red);
+                g.drawRect(xPos, yPos, attackRect.width, attackRect.height);
+            }
         }
     }
 

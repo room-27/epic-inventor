@@ -19,7 +19,7 @@ public class Porcupine extends Monster {
         displayName = "Porcupine";
 
         monsterManager = mm;
-        
+
         difficultyFactor = 0.50f;
 
         adjustHPForLevel();
@@ -36,6 +36,9 @@ public class Porcupine extends Monster {
         adjustTouchDamageForLevel();
 
         dropChances.addDropChance("Needle", 75.0f, 1, 5);
+        dropChances.addDropChance("WeemsDiceBag", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("ForrestsLaptop", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("BrandonsAbacus", 0.20f, 1, 1); //1 in 500 chance
 
         ai = new AI(registry, this);
         ai.clearGoals();
@@ -55,7 +58,6 @@ public class Porcupine extends Monster {
             if (xMoveSize > maxXMoveSize) {
                 xMoveSize = maxXMoveSize;
             }
-            stateChanged = true;
             updateImage();
             nextSlowDown = registry.currentTime + 3000;
         }
@@ -72,7 +74,6 @@ public class Porcupine extends Monster {
             if (xMoveSize > maxXMoveSize) {
                 xMoveSize = maxXMoveSize;
             }
-            stateChanged = true;
             updateImage();
             nextSlowDown = registry.currentTime + 3000;
         }
@@ -89,7 +90,6 @@ public class Porcupine extends Monster {
             if (xMoveSize > maxXMoveSize) {
                 xMoveSize = maxXMoveSize;
             }
-            stateChanged = true;
             updateImage();
             nextSlowDown = registry.currentTime + 3000;
         }
@@ -99,28 +99,24 @@ public class Porcupine extends Monster {
 
     @Override
     protected void updateImage() {
-        if (stateChanged) {
-            String state = "";
-            if (xMoveSize > originalXMoveSize) {
-                state = "Pissed";
-            }
-            if (vertMoveMode == VertMoveMode.JUMPING) {
-                setImage("Monsters/" + name + "/Jumping" + state);
-            } else if (vertMoveMode == VertMoveMode.FLYING) {
-                loopImage("Monsters/" + name + "/Flapping" + state);
-            } else if (vertMoveMode == VertMoveMode.FALLING) {
-                loopImage("Monsters/" + name + "/Falling" + state);
+        String state = "";
+        if (xMoveSize > originalXMoveSize) {
+            state = "Pissed";
+        }
+        if (vertMoveMode == VertMoveMode.JUMPING) {
+            setImage("Monsters/" + name + "/Jumping" + state);
+        } else if (vertMoveMode == VertMoveMode.FLYING) {
+            loopImage("Monsters/" + name + "/Flapping" + state);
+        } else if (vertMoveMode == VertMoveMode.FALLING) {
+            loopImage("Monsters/" + name + "/Falling" + state);
+        } else {
+            if (this.isAttacking()) {
+                loopImage("Monsters/" + name + "/Attacking" + state);
+            } else if (isStill) {
+                setImage("Monsters/" + name + "/Standing" + state);
             } else {
-                if (this.isAttacking()) {
-                    loopImage("Monsters/" + name + "/Attacking" + state);
-                } else if (isStill) {
-                    setImage("Monsters/" + name + "/Standing" + state);
-                } else {
-                    loopImage("Monsters/" + name + "/Walking" + state);
-                }
+                loopImage("Monsters/" + name + "/Walking" + state);
             }
-
-            stateChanged = false;
         }
     }
 
@@ -132,14 +128,12 @@ public class Porcupine extends Monster {
             //mob is speeding up
             if (xMoveSize < maxXMoveSize) {
                 xMoveSize++;
-                stateChanged = true;
                 updateImage();
             }
         } else {
             //mob is going back to normal speed
             if (xMoveSize > originalXMoveSize) {
                 xMoveSize--;
-                stateChanged = true;
                 updateImage();
             }
         }

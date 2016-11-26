@@ -122,7 +122,7 @@ public class Robot extends Actor implements Serializable {
         imageShieldLeft = registry.getImageLoader().getImage("Robot/Shield");
         attackArcOffsetX = 0;
         attackArcOffsetY = 0;
-        
+
         this.updateArmorPoints();
 
         ai = new AI(registry, this);
@@ -212,9 +212,16 @@ public class Robot extends Actor implements Serializable {
     public void toggleFollow() {
         isFollowing = !isFollowing;
     }
+    
+    public void playerGettingInside() {
+        vertMoveMode = VertMoveMode.NOT_JUMPING;
+    }
 
     public void toggleActivated(int x, int y, boolean isSpawn) {
         isActivated = !isActivated;
+        invulnerable = false;
+        invulnerableShow = false;
+        invulnerableTotalTime = 0;
         if (isActivated) {
             if (this.getBatteryPercentage() < 20) {
                 isActivated = false;
@@ -272,7 +279,6 @@ public class Robot extends Actor implements Serializable {
 
         isSwinging = true;
         actionMode = ActionMode.ATTACKING;
-        stateChanged = true;
         attackRefreshTimerStart = System.currentTimeMillis();
         attackRefreshTimerEnd = System.currentTimeMillis() + weaponSpeed;
 
@@ -280,9 +286,9 @@ public class Robot extends Actor implements Serializable {
         if (facing == Facing.LEFT) {
             kbX = -1 * kbX;
         }
-        
+
         String itemName = "";
-        if(newWeaponType != null) {
+        if (newWeaponType != null) {
             itemName = newWeaponType.getItemName();
         }
         playerManager.attackDamageAndKnockBack(this, attackArc, null, damage, kbX, kbY, maxHits, itemName);
@@ -291,12 +297,12 @@ public class Robot extends Actor implements Serializable {
     public void updateArmorPoints() {
         int[] bonuses;
         int l = 0;
-        
+
         armorPoints = 0;
-        
+
         if (inventory.contains("RobotScrapArmor")) {
             ArmorType at = Armor.getArmorType("RobotScrapArmorHead");
-            if(at != null) {
+            if (at != null) {
                 bonuses = at.getArmorBonus();
                 l = inventory.getLevelForType("RobotScrapArmor");
                 armorPoints = bonuses[l];
@@ -305,7 +311,7 @@ public class Robot extends Actor implements Serializable {
         }
         if (inventory.contains("RobotGoldArmor")) {
             ArmorType at = Armor.getArmorType("RobotGoldArmorHead");
-            if(at != null) {
+            if (at != null) {
                 bonuses = at.getArmorBonus();
                 l = inventory.getLevelForType("RobotGoldArmor");
                 armorPoints = bonuses[l];
@@ -314,7 +320,7 @@ public class Robot extends Actor implements Serializable {
         }
         if (inventory.contains("RobotSilverArmor")) {
             ArmorType at = Armor.getArmorType("RobotSilverArmorHead");
-            if(at != null) {
+            if (at != null) {
                 bonuses = at.getArmorBonus();
                 l = inventory.getLevelForType("RobotSilverArmor");
                 armorPoints = bonuses[l];
@@ -323,7 +329,7 @@ public class Robot extends Actor implements Serializable {
         }
         if (inventory.contains("RobotIronArmor")) {
             ArmorType at = Armor.getArmorType("RobotIronArmorHead");
-            if(at != null) {
+            if (at != null) {
                 bonuses = at.getArmorBonus();
                 l = inventory.getLevelForType("RobotIronArmor");
                 armorPoints = bonuses[l];
@@ -332,7 +338,7 @@ public class Robot extends Actor implements Serializable {
         }
         if (inventory.contains("RobotCopperArmor")) {
             ArmorType at = Armor.getArmorType("RobotCopperArmorHead");
-            if(at != null) {
+            if (at != null) {
                 bonuses = at.getArmorBonus();
                 l = inventory.getLevelForType("RobotCopperArmor");
                 armorPoints = bonuses[l];
@@ -341,7 +347,7 @@ public class Robot extends Actor implements Serializable {
         }
         if (inventory.contains("RobotWoodArmor")) {
             ArmorType at = Armor.getArmorType("RobotWoodArmorHead");
-            if(at != null) {
+            if (at != null) {
                 bonuses = at.getArmorBonus();
                 l = inventory.getLevelForType("RobotWoodArmor");
                 armorPoints = bonuses[l];
@@ -371,10 +377,8 @@ public class Robot extends Actor implements Serializable {
             SoundClip cl = new SoundClip("Robot/Hurt" + Rand.getRange(1, 3));
 
             if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     UpdateRobot ur = new UpdateRobot(player.getId(), this.getId());
-                    ur.mapX = this.getMapX();
-                    ur.mapY = this.getMapY();
                     ur.action = "ApplyDamage";
                     ur.dataInt = damage;
                     ur.actor = a;
@@ -431,11 +435,14 @@ public class Robot extends Actor implements Serializable {
         if (isActivated) {
             super.update();
 
-            //calculate current battery capacity
-            batteryTimeTotal = BASE_BATTERY_TIME;
-            if (inventory.contains("BlueBattery")) {
-                batteryTimeTotal += 2.5 * 60 * 1000;
+            if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+                //calculate current battery capacity
+                batteryTimeTotal = BASE_BATTERY_TIME;
+                if (inventory.contains("BlueBattery")) {
+                    batteryTimeTotal += 2.5 * 60 * 1000;
+                }
             }
+
             //set the attachment animations up
             if (inventory.contains("Propeller")) {
                 attachmentAnimationFrameDuration = 10;
@@ -466,15 +473,16 @@ public class Robot extends Actor implements Serializable {
             }
 
             if (player.getInsideRobot()) {
-                if (hitPoints > 0) {
-                    mapX = player.getMapX();
-                    mapY = player.getMapY();
-                } else {
-                    SoundClip cl = new SoundClip(registry, "Robot/Die", getCenterPoint());
-                    isDead = true;
-                    ai.terminate();
-                    player.setInsideRobot(false);
-                }
+                if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+                    if (hitPoints > 0) {
+                        mapX = player.getMapX();
+                        mapY = player.getMapY();
+                    } else {
+                        SoundClip cl = new SoundClip(registry, "Robot/Die", getCenterPoint());
+                        isDead = true;
+                        ai.terminate();
+                        player.setInsideRobot(false);
+                    }
 
 //                if (vertMoveMode == VertMoveMode.JUMPING) {
 //                    updateJumping();
@@ -482,27 +490,28 @@ public class Robot extends Actor implements Serializable {
 //                    updateFalling();
 //                }
 
-                //check to see if robot is touching an enemy
-                if (!invulnerable && registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
-                    Damage damage = playerManager.getMonsterTouchDamage(spriteRect);
-                    if (damage != null) {
-                        int touchDamage = damage.getAmount();
-                        if (touchDamage > 0) {
-                            applyDamage(touchDamage, damage.getSource());
+                    //check to see if robot is touching an enemy
+                    if (!invulnerable && registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+                        Damage damage = playerManager.getMonsterTouchDamage(spriteRect, getCenterPoint().x);
+                        if (damage != null) {
+                            int touchDamage = damage.getAmount();
+                            if (touchDamage > 0) {
+                                applyDamage(touchDamage, damage.getSource());
+                            }
                         }
                     }
-                }
 
-                //check status of invulnerability
-                if (invulnerable) {
-                    long p = registry.getImageLoader().getPeriod();
-                    invulnerableTotalTime = (invulnerableTotalTime
-                            + registry.getImageLoader().getPeriod())
-                            % (long) (1000 * INVULNERABLE_MAX_TIME * 2);
+                    //check status of invulnerability
+                    if (invulnerable) {
+                        long p = registry.getImageLoader().getPeriod();
+                        invulnerableTotalTime = (invulnerableTotalTime
+                                + registry.getImageLoader().getPeriod())
+                                % (long) (1000 * INVULNERABLE_MAX_TIME * 2);
 
-                    if ((invulnerableTotalTime / (INVULNERABLE_MAX_TIME * 1000)) > 1) {
-                        invulnerable = false;
-                        invulnerableTotalTime = 0;
+                        if ((invulnerableTotalTime / (INVULNERABLE_MAX_TIME * 1000)) > 1) {
+                            invulnerable = false;
+                            invulnerableTotalTime = 0;
+                        }
                     }
                 }
             } else {
@@ -542,95 +551,101 @@ public class Robot extends Actor implements Serializable {
                         createMeleeFrames();
                     }
                 }
-                if (attackRefreshTimerEnd <= System.currentTimeMillis() || meleeWeaponType == null) {
-                    isSwinging = false;
-                }
+                if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+                    if (attackRefreshTimerEnd <= System.currentTimeMillis() || meleeWeaponType == null) {
+                        isSwinging = false;
+                    }
 
-                if (hitPoints > 0) {
-                    if (knockBackX > 0) {
-                        mapX += checkCollide(knockBackX);
-                    } else if (knockBackX < 0) {
-                        mapX -= checkCollide(-1 * knockBackX);
-                    } else {
-                        if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.CLIENT) {
-                            ai.process(true);
+                    if (hitPoints > 0) {
+                        if (knockBackX > 0) {
+                            mapX += checkCollide(knockBackX);
+                        } else if (knockBackX < 0) {
+                            mapX -= checkCollide(-1 * knockBackX);
                         } else {
-                            ai.process();
-                        }
-                        if (ai.getChanged()) {
-                            ai.setChanged(false);
-                            if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                                if (registry.getNetworkThread().readyForUpdates) {
-                                    UpdateRobot ur = new UpdateRobot(player.getId(), this.getId());
-                                    ur.mapX = this.getMapX();
-                                    ur.mapY = this.getMapY();
-                                    ur.previousGoal = ai.getPreviousGoal();
-                                    ur.currentGoal = ai.getCurrentGoal();
-                                    registry.getNetworkThread().sendData(ur);
+                            if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.CLIENT) {
+                                ai.process(true);
+                            } else {
+                                ai.process();
+                            }
+                            if (ai.getChanged()) {
+                                ai.setChanged(false);
+                                if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
+                                    if (registry.getNetworkThread().readyForUpdates()) {
+                                        UpdateRobot ur = new UpdateRobot(player.getId(), this.getId());
+                                        ur.previousGoal = ai.getPreviousGoal();
+                                        ur.currentGoal = ai.getCurrentGoal();
+                                        registry.getNetworkThread().sendData(ur);
+                                    }
                                 }
                             }
                         }
+                    } else {
+                        SoundClip cl = new SoundClip(registry, "Robot/Die", getCenterPoint());
+                        isDead = true;
+                        ai.terminate();
+                        player.setInsideRobot(false);
                     }
-                } else {
-                    SoundClip cl = new SoundClip(registry, "Robot/Die", getCenterPoint());
-                    isDead = true;
-                    ai.terminate();
-                    player.setInsideRobot(false);
-                }
 
-                if (vertMoveMode == VertMoveMode.JUMPING) {
-                    updateJumping();
-                } else if (vertMoveMode == VertMoveMode.FALLING) {
-                    updateFalling();
-                }
+                    if (vertMoveMode == VertMoveMode.JUMPING) {
+                        updateJumping();
+                    } else if (vertMoveMode == VertMoveMode.FALLING) {
+                        updateFalling();
+                    }
 
-                //check to see if robot is touching an enemy
-                if (!invulnerable && registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
-                    Damage damage = playerManager.getMonsterTouchDamage(spriteRect);
-                    if (damage != null) {
-                        int touchDamage = damage.getAmount();
-                        if (touchDamage > 0) {
-                            applyDamage(touchDamage, damage.getSource());
+                    //check to see if robot is touching an enemy
+                    if (!invulnerable && registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+                        Damage damage = playerManager.getMonsterTouchDamage(spriteRect, getCenterPoint().x);
+                        if (damage != null) {
+                            int touchDamage = damage.getAmount();
+                            if (touchDamage > 0) {
+                                applyDamage(touchDamage, damage.getSource());
+                            }
                         }
                     }
-                }
 
-                //check status of invulnerability
-                if (invulnerable) {
-                    long p = registry.getImageLoader().getPeriod();
-                    invulnerableTotalTime = (invulnerableTotalTime
-                            + registry.getImageLoader().getPeriod())
-                            % (long) (1000 * INVULNERABLE_MAX_TIME * 2);
+                    //check status of invulnerability
+                    if (invulnerable) {
+                        long p = registry.getImageLoader().getPeriod();
+                        invulnerableTotalTime = (invulnerableTotalTime
+                                + registry.getImageLoader().getPeriod())
+                                % (long) (1000 * INVULNERABLE_MAX_TIME * 2);
 
-                    if ((invulnerableTotalTime / (INVULNERABLE_MAX_TIME * 1000)) > 1) {
-                        invulnerable = false;
-                        invulnerableTotalTime = 0;
+                        if ((invulnerableTotalTime / (INVULNERABLE_MAX_TIME * 1000)) > 1) {
+                            invulnerable = false;
+                            invulnerableTotalTime = 0;
+                        }
                     }
+
+                    mapX = playerManager.checkMapX(mapX, width);
+                    mapY = playerManager.checkMapY(mapY, height);
+
+                    checkIfFalling();
                 }
-
-                mapX = playerManager.checkMapX(mapX, width);
-                mapY = playerManager.checkMapY(mapY, height);
-
-                checkIfFalling();
             }
 
             updateImage();
 
-            batteryTimeRemaining -= registry.getImageLoader().getPeriod();
-            if (batteryTimeRemaining <= 0) {
-                batteryTimeRemaining = 0;
-                toggleActivated();
+
+            if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+                batteryTimeRemaining -= registry.getImageLoader().getPeriod();
+                if (batteryTimeRemaining <= 0) {
+                    batteryTimeRemaining = 0;
+                    toggleActivated();
+                }
             }
         } else {
-            //calculate current battery recharge rate
-            batteryRechargeMultiplier = BASE_BATTERY_RECHARGE_MULTIPLIER;
-            if (inventory.contains("GreenBattery")) {
-                batteryRechargeMultiplier *= 1.5;
-            }
 
-            batteryTimeRemaining += registry.getImageLoader().getPeriod() * batteryRechargeMultiplier;
-            if (batteryTimeRemaining >= batteryTimeTotal) {
-                batteryTimeRemaining = batteryTimeTotal;
+            if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+                //calculate current battery recharge rate
+                batteryRechargeMultiplier = BASE_BATTERY_RECHARGE_MULTIPLIER;
+                if (inventory.contains("GreenBattery")) {
+                    batteryRechargeMultiplier *= 1.5;
+                }
+
+                batteryTimeRemaining += registry.getImageLoader().getPeriod() * batteryRechargeMultiplier;
+                if (batteryTimeRemaining >= batteryTimeTotal) {
+                    batteryTimeRemaining = batteryTimeTotal;
+                }
             }
         }
         //attachments animation update
@@ -745,7 +760,7 @@ public class Robot extends Actor implements Serializable {
             //subtract the height since points are bottom left and drawing starts from top left
             yPos -= height;
 
-            if (im != null) {
+            if (im != null && width > 0) {
                 if (facing == Facing.LEFT) {
                     tx = AffineTransform.getScaleInstance(1, -1);
                     tx = AffineTransform.getScaleInstance(-1, 1);
@@ -793,7 +808,7 @@ public class Robot extends Actor implements Serializable {
 
             //is the player riding inside the robot?
             if (player.getInsideRobot()) {
-                if ((vertMoveMode == VertMoveMode.FLYING || vertMoveMode == VertMoveMode.FALLING) && inventory.contains("Propeller")) {
+                if ((player.getVertMoveMode() == VertMoveMode.FLYING || player.getVertMoveMode() == VertMoveMode.FALLING) && inventory.contains("Propeller")) {
                     renderAccessory(g, "Propeller", currentAttachmentAnimationFrame, offsetX, offsetY);
                 } else {
                     renderAccessory(g, "Riding", offsetX, offsetY);
@@ -856,27 +871,23 @@ public class Robot extends Actor implements Serializable {
     public void stopAttacks() {
         actionMode = ActionMode.NONE;
         isSwinging = false;
-        stateChanged = true;
         updateImage();
     }
 
     @Override
     protected void updateImage() {
-        if (stateChanged) {
-            if (actionMode == ActionMode.ATTACKING) {
-                loopImage("Robot/Bashing");
-            } else if (vertMoveMode == VertMoveMode.JUMPING) {
-                setImage("Robot/Jumping");
-            } else if (vertMoveMode == VertMoveMode.FLYING) {
-                loopImage("Monsters/" + name + "/Standing");
+        if (actionMode == ActionMode.ATTACKING) {
+            loopImage("Robot/Bashing");
+        } else if (vertMoveMode == VertMoveMode.JUMPING) {
+            setImage("Robot/Jumping");
+        } else if (vertMoveMode == VertMoveMode.FLYING) {
+            loopImage("Monsters/" + name + "/Standing");
+        } else {
+            if (!isTryingToMove) {
+                loopImage("Robot/Standing");
             } else {
-                if (!isTryingToMove) {
-                    loopImage("Robot/Standing");
-                } else {
-                    loopImage("Robot/Walking");
-                }
+                loopImage("Robot/Walking");
             }
-            stateChanged = false;
         }
     }
 
@@ -905,6 +916,91 @@ public class Robot extends Actor implements Serializable {
                 moveLeft();
             }
         }
+    }
+
+    public UDPRobot createUpdate() {
+        UDPRobot udpUpdate = new UDPRobot(id);
+        udpUpdate.mapX = mapX;
+        udpUpdate.lastMapY = lastMapY;
+        udpUpdate.mapY = mapY;
+        udpUpdate.width = width;
+        udpUpdate.height = height;
+        udpUpdate.xMoveSize = xMoveSize;
+        udpUpdate.actionMode = actionMode;
+        udpUpdate.vertMoveMode = vertMoveMode;
+        udpUpdate.facing = facing;
+        udpUpdate.jumpSize = jumpSize;
+        //udpUpdate.ascendOriginalSize = ascendOriginalSize;
+        //udpUpdate.ascendSize = ascendSize;
+        //udpUpdate.ascendCount = ascendCount;
+        //udpUpdate.ascendMax = ascendMax;
+        //udpUpdate.fallSize = fallSize;
+        udpUpdate.isStill = isStill;
+        udpUpdate.isTryingToMove = isTryingToMove;
+        udpUpdate.startJumpSize = startJumpSize;
+        //udpUpdate.maxFallSize = maxFallSize;
+        //udpUpdate.gravity = gravity;
+        //udpUpdate.totalFall = totalFall;
+        //udpUpdate.completeFall = completeFall;
+        udpUpdate.totalHitPoints = totalHitPoints;
+        udpUpdate.hitPoints = hitPoints;
+        udpUpdate.totalArmorPoints = totalArmorPoints;
+        udpUpdate.armorPoints = armorPoints;
+        udpUpdate.knockBackX = knockBackX;
+        //udpUpdate.isDead = isDead;
+        //udpUpdate.isActivated = isActivated;
+        udpUpdate.batteryTimeRemaining = batteryTimeRemaining;
+        udpUpdate.batteryTimeTotal = batteryTimeTotal;
+        //udpUpdate.batteryRechargeMultiplier = batteryRechargeMultiplier;
+        udpUpdate.mode = mode;
+        udpUpdate.isFollowing = isFollowing;
+        udpUpdate.invulnerable = invulnerable;
+        udpUpdate.meleeWeaponType = meleeWeaponType;
+        udpUpdate.weaponLevel = weaponLevel;
+        udpUpdate.isSwinging = isSwinging;
+
+        return udpUpdate;
+    }
+
+    public void processUpdate(UDPRobot udpUpdate) {
+        mapX = udpUpdate.mapX;
+        lastMapY = udpUpdate.lastMapY;
+        mapY = udpUpdate.mapY;
+        width = udpUpdate.width;
+        height = udpUpdate.height;
+        xMoveSize = udpUpdate.xMoveSize;
+        actionMode = udpUpdate.actionMode;
+        vertMoveMode = udpUpdate.vertMoveMode;
+        facing = udpUpdate.facing;
+        jumpSize = udpUpdate.jumpSize;
+        //ascendOriginalSize = udpUpdate.ascendOriginalSize;
+        //ascendSize = udpUpdate.ascendSize;
+        //ascendCount = udpUpdate.ascendCount;
+        //ascendMax = udpUpdate.ascendMax;
+        //fallSize = udpUpdate.fallSize;
+        isStill = udpUpdate.isStill;
+        isTryingToMove = udpUpdate.isTryingToMove;
+        startJumpSize = udpUpdate.startJumpSize;
+        //maxFallSize = udpUpdate.maxFallSize;
+        //gravity = udpUpdate.gravity;
+        //totalFall = udpUpdate.totalFall;
+        //completeFall = udpUpdate.completeFall;
+        totalHitPoints = udpUpdate.totalHitPoints;
+        hitPoints = udpUpdate.hitPoints;
+        totalArmorPoints = udpUpdate.totalArmorPoints;
+        armorPoints = udpUpdate.armorPoints;
+        knockBackX = udpUpdate.knockBackX;
+        //isDead = udpUpdate.isDead;
+        //isActivated = udpUpdate.isActivated;
+        batteryTimeRemaining = udpUpdate.batteryTimeRemaining;
+        batteryTimeTotal = udpUpdate.batteryTimeTotal;
+        //batteryRechargeMultiplier = udpUpdate.batteryRechargeMultiplier;
+        mode = udpUpdate.mode;
+        isFollowing = udpUpdate.isFollowing;
+        invulnerable = udpUpdate.invulnerable;
+        meleeWeaponType = udpUpdate.meleeWeaponType;
+        weaponLevel = udpUpdate.weaponLevel;
+        isSwinging = udpUpdate.isSwinging;
     }
 
     private void readObject(ObjectInputStream aInputStream) throws Exception {

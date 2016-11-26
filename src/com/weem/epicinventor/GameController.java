@@ -79,7 +79,10 @@ public class GameController {
     private String newRobotName = "";
     private boolean isLoading;
     private boolean isOnline;
-    private volatile NetworkThread networkThread;
+    //private volatile NetworkThread networkThread;
+    private volatile NetworkThread2 networkThread;
+    private volatile TCPServerManager TCPServerManager;
+    private volatile TCPClient tcpClient;
     private long period;
     private ImageLoaderThread imageLoadThread;
     private GamePlayList currentPlayList, inventorPlayList, robotPlayList, bossPlayList, belowGroundPlayList;
@@ -96,7 +99,7 @@ public class GameController {
     private boolean isInGame = false;
     private int levelUpGraphicDirection = 0;
     private int levelUpGraphicPosition = -340;
-    //private ParticleEmitter pe;
+    public Rectangle panelRect = new Rectangle();
 
     public GameController(int w, int h, long p, GamePanel gp) {
         pWidth = w;
@@ -162,7 +165,7 @@ public class GameController {
         playerManager = new PlayerManager(this, registry);
         registry.setPlayerManager(playerManager);
 
-        String v = RemoteFile.getFileContents("http://epicinventor.com/v/" + Game.VERSION + "/");
+        String v = RemoteFile.getFileContents("http://download.epicinventor.com/v/" + Game.VERSION + "/");
         if (v != null) {
             if (!v.equals("")) {
                 currentVersion = v;
@@ -198,6 +201,10 @@ public class GameController {
 
     public boolean getIsPaused() {
         return gamePanel.getIsPaused();
+    }
+
+    public GamePanel getGamePanel() {
+        return gamePanel;
     }
 
     public boolean getIsMasterPaused() {
@@ -290,6 +297,8 @@ public class GameController {
             monsterManager = new MonsterManager(this, registry);
         }
         registry.setMonsterManager(monsterManager);
+        Game.loadingText = "Growing Plants";
+        monsterManager.generatePlants();
 
         /*
          * Game.loadingText = "Spawning Evil Bad Guys"; monsterManager = new
@@ -328,23 +337,36 @@ public class GameController {
 
         isInGame = true;
 
+        hudManager.loadHUD(HUDManager.HUDType.MiniMap);
         hudManager.loadHUD(HUDManager.HUDType.Master);
         hudManager.loadHUD(HUDManager.HUDType.QuickBar);
         hudManager.loadHUD(HUDManager.HUDType.Portrait);
         hudManager.loadHUD(HUDManager.HUDType.WeaponInfo);
         hudManager.loadHUD(HUDManager.HUDType.ArmorInfo);
+        hudManager.loadHUD(HUDManager.HUDType.Oobaboo);
         //hudManager.loadHUD(HUDManager.HUDType.Version);
         hudManager.loadHUD(HUDManager.HUDType.Pause);
         hudManager.loadHUD(HUDManager.HUDType.Console);
 
+        /*
+         * if (startServer) { networkThread = new NetworkThread(registry, this,
+         * "", Integer.parseInt(serverPort));
+         * registry.setNetworkThread(networkThread); networkThread.start(); }
+         * else if (serverJoin) { networkThread = new NetworkThread(registry,
+         * this, serverIP, Integer.parseInt(serverPort));
+         * registry.setNetworkThread(networkThread); networkThread.start();
+        }
+         */
         if (startServer) {
-            networkThread = new NetworkThread(registry, this, "", Integer.parseInt(serverPort));
+            TCPServerManager = new TCPServerManager(registry, this, Integer.parseInt(serverPort));
+            networkThread = new NetworkThread2(TCPServerManager, null);
             registry.setNetworkThread(networkThread);
-            networkThread.start();
+            TCPServerManager.start();
         } else if (serverJoin) {
-            networkThread = new NetworkThread(registry, this, serverIP, Integer.parseInt(serverPort));
+            tcpClient = new TCPClient(registry, this, serverIP, Integer.parseInt(serverPort));
+            networkThread = new NetworkThread2(null, tcpClient);
             registry.setNetworkThread(networkThread);
-            networkThread.start();
+            tcpClient.start();
         }
 
         updateMusicVolume();
@@ -555,11 +577,15 @@ public class GameController {
     }
 
     public int checkForBlock(Point p) {
-        short b = blockManager.getBlockFromPoint(p);
-        if (!blockManager.isIdInGroup(b, "None")) {
-            BlockType bt = blockManager.getBlockTypeById(b);
-            if (bt != null && !bt.isBackground()) {
-                return (p.y / blockManager.getBlockHeight()) * blockManager.getBlockHeight() + blockManager.getBlockHeight();
+        if (blockManager != null) {
+            short b = blockManager.getBlockFromPoint(p);
+            if (!blockManager.isIdInGroup(b, "None")) {
+                BlockType bt = blockManager.getBlockTypeById(b);
+                if (bt != null && !bt.isBackground()) {
+                    return (p.y / blockManager.getBlockHeight()) * blockManager.getBlockHeight() + blockManager.getBlockHeight();
+                } else {
+                    return 0;
+                }
             } else {
                 return 0;
             }
@@ -585,7 +611,7 @@ public class GameController {
     }
 
     public void gameExit() {
-        System.exit(0);
+        this.quit();
     }
 
     public int findFloor(int xWorld) {
@@ -704,7 +730,12 @@ public class GameController {
             placeableManager.loadContainer(x, overflowDrops);
         }
 
-        indicatorManager.createIndicator(x, y, drops);
+        if (p == playerManager.getCurrentPlayer()) {
+            indicatorManager.createIndicator(x, y, drops);
+        } else {
+            if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            }
+        }
     }
 
     public void shakeCamera(long time, int amount) {
@@ -784,14 +815,16 @@ public class GameController {
     }
 
     public int checkMapY(int y, int objHeight) {
-        //make sure we can't go too far to the bottom
-        if (y <= 0) {
-            y = 0;
-        }
+        if (blockManager != null) {
+            //make sure we can't go too far to the bottom
+            if (y <= 0) {
+                y = 0;
+            }
 
-        //make sure we can't go too far to the top
-        if (y > (blockManager.getMapSurfaceMax() + 2000 - objHeight)) {
-            y = blockManager.getMapSurfaceMax() + 2000 - objHeight;
+            //make sure we can't go too far to the top
+            if (y > (blockManager.getMapSurfaceMax() + 2000 - objHeight)) {
+                y = blockManager.getMapSurfaceMax() + 2000 - objHeight;
+            }
         }
 
         return y;
@@ -824,22 +857,32 @@ public class GameController {
     }
 
     public void stopGather() {
-        playerManager.playerStopGather();
+        stopGather(playerManager.getCurrentPlayer());
+    }
+
+    public void stopGather(Player p) {
+        playerManager.playerStopGather(p);
     }
 
     public void startGather() {
-        if (!playerManager.isPlayerMoving() && !playerManager.isPlayerPerformingAction()) {
-            if (!playerManager.isPlayerInsideRobot()) {
-                String rid = resourceManager.startGather(playerManager.getCurrentPlayer(), playerManager.getCenterPoint(), MAX_RESOURCE_DISTANCE);
-                if (!rid.isEmpty()) {
-                    playerManager.playerStartGather(rid);
-                } else if (placeableManager.startDestroy(playerManager.getCurrentPlayer())) {
-                    playerManager.playerStartGather(null);
-                } else if (playerManager.playerToggleInsideRobot()) {
+        startGather(playerManager.getCurrentPlayer());
+    }
+
+    public void startGather(Player p) {
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            if (!playerManager.isPlayerMoving(p) && !playerManager.isPlayerPerformingAction(p)) {
+                if (!playerManager.isPlayerInsideRobot(p)) {
+                    String rid = resourceManager.startGather(p, p.getCenterPoint(), MAX_RESOURCE_DISTANCE);
+                    if (!rid.isEmpty()) {
+                        playerManager.playerStartGather(p, rid);
+                    } else if (placeableManager.startDestroy(p)) {
+                        playerManager.playerStartGather(p, null);
+                    } else if (playerManager.playerToggleInsideRobot(p)) {
+                        //we're good!
+                    }
+                } else if (playerManager.playerToggleInsideRobot(p)) {
                     //we're good!
                 }
-            } else if (playerManager.playerToggleInsideRobot()) {
-                //we're good!
             }
         }
     }
@@ -852,38 +895,47 @@ public class GameController {
         if (networkThread != null) {
             networkThread.close();
         }
-        networkThread = null;
-        registry.setNetworkThread(null);
-
-        backgroundManager = null;
-        blockManager = null;
-        registry.setBlockManager(null);
-        resourceManager = null;
-        registry.setResourceManager(null);
-        placeableManager = null;
-        registry.setPlaceableManager(null);
-        monsterManager = null;
-        registry.setMonsterManager(null);
-        playerManager = null;
-        registry.setPlayerManager(null);
-        projectileManager = null;
+        if (TCPServerManager != null) {
+            TCPServerManager.close();
+        }
+        /*
+         * networkThread = null; registry.setNetworkThread(null);
+         * backgroundManager = null; blockManager = null;
+         * registry.setBlockManager(null); resourceManager = null;
+         * registry.setResourceManager(null); placeableManager = null;
+         * registry.setPlaceableManager(null); monsterManager = null;
+         * registry.setMonsterManager(null); playerManager = null;
+         * registry.setPlayerManager(null); projectileManager = null;
         registry.setProjectileManager(null);
+         */
+        do {
+            Thread.yield();
+        } while (registry.isSaving);
+
+        System.exit(0);
     }
 
     public void saveAndQuit() {
         if (networkThread != null) {
             networkThread.close();
         }
+        if (TCPServerManager != null) {
+            TCPServerManager.close();
+        }
 
+        gamePanel.resumeGame();
         gamePanel.resumeMasterGame();
         isInGame = false;
         networkThread = null;
         registry.setNetworkThread(null);
+        registry.getProjectileManager().removeAll();
+        registry.getPlayerManager().playerStopLoopingSound();
         hudManager.unloadHUD("Master");
         hudManager.unloadHUD("ArmorInfo");
         hudManager.unloadHUD("WeaponInfo");
         hudManager.unloadHUD("Portrait");
         hudManager.unloadHUD("QuickBar");
+        hudManager.unloadHUD("Oobaboo");
         //hudManager.unloadHUD("Version");
         hudManager.unloadHUD("Pause");
         hudManager.unloadHUD("Console");
@@ -892,13 +944,15 @@ public class GameController {
         hudManager.loadHUD(HUDManager.HUDType.ScreenLoading);
 
         Settings.setPlayer(Settings.player, playerManager.getCurrentPlayer());
-        if (multiplayerMode != MultiplayerMode.CLIENT) {
-            //only save this stuff if acting as a server or playing single player
-            Settings.setBlockManager(Settings.player, blockManager);
-            Settings.setPlaceableManager(Settings.player, placeableManager);
-            Settings.setMonsterManager(Settings.player, monsterManager);
-        }
+//        if (multiplayerMode != MultiplayerMode.CLIENT) {
+//            //only save this stuff if acting as a server or playing single player
+//            Settings.setBlockManager(Settings.player, blockManager);
+//            Settings.setPlaceableManager(Settings.player, placeableManager);
+//            Settings.setMonsterManager(Settings.player, monsterManager);
+//        }
+        registry.isSaving = false;
         Settings.save();
+        Settings.invalidatePlayerSelect();
         multiplayerMode = MultiplayerMode.NONE;
 
         backgroundManager = null;
@@ -933,6 +987,10 @@ public class GameController {
     public void togglePauseHUD() {
         hudManager.togglePauseHUD();
         gamePanel.toggleMasterPaused();
+    }
+
+    public void showOobabooHUD() {
+        hudManager.showOobabooHUD();
     }
 
     public void resumeMasterGame() {
@@ -1067,12 +1125,12 @@ public class GameController {
         return placeableManager.loadPlaceable(n, x, y);
     }
 
-    public void cancelPlaceable() {
-        placeableManager.cancelPlaceable();
+    public void cancelPlaceable(Player p) {
+        placeableManager.cancelPlaceable(p);
     }
 
-    public Damage getMonsterTouchDamage(Rectangle r) {
-        return monsterManager.getMonsterTouchDamage(r);
+    public Damage getMonsterTouchDamage(Rectangle r, int x) {
+        return monsterManager.getMonsterTouchDamage(r, x);
     }
 
     public void playerUnEquipToDelete(String equipmentType) {
@@ -1083,17 +1141,9 @@ public class GameController {
         playerManager.playerCraftItem(itemType);
     }
 
-    public void playerDied() {
-        Thread thread = new Thread() {
-
-            @Override
-            public void run() {
-                projectileManager.removeAll();
-                monsterManager.removeAllMonsters();
-            }
-        };
- 
-        thread.start();
+    public void playerDied(Rectangle area) {
+        projectileManager.removeAll(area);
+        monsterManager.removeAllMonsters(area);
 
         SoundClip cl = new SoundClip("Misc/GameOver");
     }
@@ -1129,16 +1179,16 @@ public class GameController {
     }
 
     public void stopActions(Player p) {
-        if (p == playerManager.getCurrentPlayer()) {
+        if (multiplayerMode != this.multiplayerMode.CLIENT) {
             if (resourceManager != null) {
-                resourceManager.stopGather();
+                resourceManager.stopGather(p);
             }
             if (playerManager != null) {
-                playerManager.playerStopGather();
+                playerManager.playerStopGather(p);
             }
             if (placeableManager != null) {
-                placeableManager.stopDestroy();
-                placeableManager.cancelPlaceable();
+                placeableManager.stopDestroy(p);
+                placeableManager.cancelPlaceable(p);
             }
         }
     }
@@ -1164,14 +1214,18 @@ public class GameController {
     }
 
     public void handleClick(Point clickPoint) {
+        handleClick(playerManager.getCurrentPlayer(), clickPoint);
+    }
+
+    public void handleClick(Player p, Point clickPoint) {
         boolean handled = false;
 
         if (!hudManager.handleClick(clickPoint)) {
             if (!gamePanel.getIsPaused() && !gamePanel.getIsMasterPaused()) {
                 if (monsterManager != null) {
-                    handled = monsterManager.handleClick(clickPoint);
+                    handled = monsterManager.handleClick(p, clickPoint);
                     if (placeableManager != null && !handled) {
-                        if (!placeableManager.handleClick(clickPoint)) {
+                        if (!placeableManager.handleClick(p, clickPoint)) {
                             playerManager.handleClick(clickPoint);
                         }
                     } else {
@@ -1205,12 +1259,9 @@ public class GameController {
     public void handleMouseScroll(int steps) {
         playerManager.getCurrentPlayer().scrollQuickBar(steps);
         if (multiplayerMode != MultiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(playerManager.getCurrentPlayer().getId());
                 up.name = playerManager.getCurrentPlayer().getName();
-                up.mapX = playerManager.getCurrentPlayer().getMapX();
-                up.mapY = playerManager.getCurrentPlayer().getMapY();
-                up.vertMoveMode = playerManager.getCurrentPlayer().getVertMoveMode();
                 up.action = "ScrollQuickBar";
                 up.dataInt = steps;
                 registry.getNetworkThread().sendData(up);
@@ -1294,6 +1345,10 @@ public class GameController {
         levelUpGraphicPosition = -340;
     }
 
+    public Rectangle getPanelRect() {
+        return panelRect;
+    }
+
     public void update() {
         if (gameError == null) {
             registry.currentTime = System.currentTimeMillis();
@@ -1303,6 +1358,8 @@ public class GameController {
             int oldY = mapOffsetY;
 
             if (!gamePanel.getIsPaused() && !gamePanel.getIsMasterPaused()) {
+                panelRect = new Rectangle(mapOffsetX, mapOffsetY, pWidth, pHeight);
+
                 if (backgroundManager != null && !isLoading) {
                     backgroundManager.update();
                 }
@@ -1368,10 +1425,10 @@ public class GameController {
                             try {
                                 showMessage("Success", "Game Auto-saved...");
                                 Settings.setPlayer(Settings.player, playerManager.getCurrentPlayer());
-                                if (multiplayerMode != MultiplayerMode.CLIENT) {
-                                    Settings.setBlockManager(Settings.player, blockManager);
-                                    Settings.setPlaceableManager(Settings.player, placeableManager);
-                                }
+//                                if (multiplayerMode != MultiplayerMode.CLIENT) {
+//                                    Settings.setBlockManager(Settings.player, blockManager);
+//                                    Settings.setPlaceableManager(Settings.player, placeableManager);
+//                                }
                                 Settings.save();
                             } catch (Exception e) {
                                 throw new RuntimeException(e.getMessage());
@@ -1420,7 +1477,11 @@ public class GameController {
             }
         } else {
             if (backgroundManager != null && !isLoading) {
-                backgroundManager.render(g);
+                if (blockManager != null) {
+                    if (panelRect.y > (blockManager.getMapSurfaceMin() - pHeight)) {
+                        backgroundManager.render(g);
+                    }
+                }
             }
             if (blockManager != null && !isLoading) {
                 blockManager.render(g);
@@ -1653,6 +1714,15 @@ public class GameController {
                 playerManager.playerShowRect(true);
                 monsterManager.showRects(true);
             }
+            return;
+        } else if (parts[0].toLowerCase().equals("healer")) {
+            playerManager.getCurrentPlayer().spawnOobaboo("Healer");
+            return;
+        } else if (parts[0].toLowerCase().equals("gatherer")) {
+            playerManager.getCurrentPlayer().spawnOobaboo("Gatherer");
+            return;
+        } else if (parts[0].toLowerCase().equals("warrior")) {
+            playerManager.getCurrentPlayer().spawnOobaboo("Warrior");
             return;
         } else if (parts[0].toLowerCase().equals("settcp")) {
             townCameraPosition.x = playerManager.getCurrentPlayer().getMapX();

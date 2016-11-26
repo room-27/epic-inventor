@@ -56,7 +56,7 @@ enum PlaceableType {
     WorkBench
 }
 
-public class PlaceableManager extends Manager implements Serializable {
+public class PlaceableManager extends Manager implements Serializable, Cloneable {
 
     protected static final long serialVersionUID = 10000L;
     private HashMap<String, Placeable> placeables;
@@ -164,6 +164,10 @@ public class PlaceableManager extends Manager implements Serializable {
         }
     }
 
+    public HashMap<String, Placeable> getPlaceables() {
+        return placeables;
+    }
+
     public Placeable getPlaceableById(String id) {
         if (placeables.containsKey(id)) {
             Placeable placeable = placeables.get(id);
@@ -181,6 +185,9 @@ public class PlaceableManager extends Manager implements Serializable {
         Placeable placeable = null;
         Player p = registry.getPlayerManager().getCurrentPlayer();
         int mapY = findNextFloor(x, y, 1);
+        if (state == Placeable.State.Placed) {
+            mapY = y;
+        }
 
         PlaceableType whichPlaceable = PlaceableType.valueOf(n);
 
@@ -309,7 +316,7 @@ public class PlaceableManager extends Manager implements Serializable {
 
                         placeable.setIsBuilding(true);
                         if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                            if (registry.getNetworkThread().readyForUpdates) {
+                            if (registry.getNetworkThread().readyForUpdates()) {
                                 registry.getNetworkThread().sendData(placeable);
                             }
                         }
@@ -334,7 +341,7 @@ public class PlaceableManager extends Manager implements Serializable {
 
         registerPlaceable(placeable);
         if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 registry.getNetworkThread().sendData(placeable);
             }
         }
@@ -351,7 +358,7 @@ public class PlaceableManager extends Manager implements Serializable {
 
         registerPlaceable(placeable);
         if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 registry.getNetworkThread().sendData(placeable);
             }
         }
@@ -364,7 +371,7 @@ public class PlaceableManager extends Manager implements Serializable {
 
         registerPlaceable(placeable);
         if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 registry.getNetworkThread().sendData(placeable);
             }
         }
@@ -484,8 +491,12 @@ public class PlaceableManager extends Manager implements Serializable {
         return count;
     }
 
-    public boolean handleClick(Point clickPoint) {
-        return placeCurrent();
+    public boolean handleClick(Player p, Point clickPoint) {
+        if (p == registry.getPlayerManager().getCurrentPlayer()) {
+            return placeCurrent(p);
+        } else {
+            return false;
+        }
     }
 
     public boolean handleRightClick(Point clickPoint) {
@@ -511,46 +522,51 @@ public class PlaceableManager extends Manager implements Serializable {
         gameController.toggleContainerHUD(h);
     }
 
-    public void stopDestroy() {
-        Placeable placeable = null;
+    public void stopDestroy(Player p) {
+        if (p == registry.getPlayerManager().getCurrentPlayer()) {
+            Placeable placeable = null;
 
-        try {
-            for (String key : placeables.keySet()) {
-                placeable = (Placeable) placeables.get(key);
-                placeable.setDestroying(false);
+            try {
+                for (String key : placeables.keySet()) {
+                    placeable = (Placeable) placeables.get(key);
+                    placeable.setDestroying(null, false);
+                }
+            } catch (ConcurrentModificationException concEx) {
+                //another thread was trying to modify placeables while iterating
+                //we'll continue and the new item can be grabbed on the next update
             }
-        } catch (ConcurrentModificationException concEx) {
-            //another thread was trying to modify placeables while iterating
-            //we'll continue and the new item can be grabbed on the next update
         }
     }
 
     public boolean startDestroy(Player player) {
         Placeable placeable = null;
         Placeable closestPlaceable = null;
-        
+        Point p = null;
+
         double closestDistance = 0;
-        
+
         try {
             for (String key : placeables.keySet()) {
                 placeable = (Placeable) placeables.get(key);
-                placeable.setDestroying(false);
-                if (player.getCenterPoint().distance(placeable.getCenterPoint()) < closestDistance || closestDistance == 0) {
+                placeable.setDestroying(null, false);
+                p = new Point(placeable.getCenterPoint());
+                p.y -= (placeable.getHeight() / 2);
+                if (player.getCenterPoint().distance(p) < closestDistance || closestDistance == 0) {
                     closestPlaceable = placeable;
-                    closestDistance = player.getCenterPoint().distance(placeable.getCenterPoint());
+                    closestDistance = player.getCenterPoint().distance(p);
                 }
             }
         } catch (ConcurrentModificationException concEx) {
             //another thread was trying to modify resources while iterating
             //we'll continue and the new item can be grabbed on the next update
         }
-        
+
         if (closestPlaceable != null) {
-            if(closestDistance <= closestPlaceable.width) {
+            if (closestDistance <= closestPlaceable.width / 2 || closestDistance <= 16) {
                 if (closestPlaceable.canDestroy()
                         && !closestPlaceable.getType().equals("TownHall")
                         && !closestPlaceable.getType().equals("ItemContainer")) {
-                    if (closestPlaceable.setDestroying(true)) {
+                    if (closestPlaceable.setDestroying(player, true)) {
                         return true;
                     }
                 }
@@ -561,18 +577,20 @@ public class PlaceableManager extends Manager implements Serializable {
     }
 
     public void placeableDoneDestroying(Placeable p) {
-        gameController.stopGather();
+        Player player = p.getDestroyingPlayer();
 
-        if (gameController.playerAddItem(p.getItemName(), 1) == 0) {
-            p.destroy();
-            SoundClip cl = new SoundClip("Player/Good");
+        gameController.stopGather(player);
+
+        if (player != null) {
+            if (gameController.playerAddItem(player, p.getItemName(), 1) == 0) {
+                p.destroy();
+                SoundClip cl = new SoundClip("Player/Good");
+            }
         }
 
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlaceable up = new UpdatePlaceable(p.getId());
-                up.hitPoints = p.getHitPoints();
-                up.totalHitPoints = p.getTotalHitPoints();
                 up.action = "DoneDestroying";
                 registry.getNetworkThread().sendData(up);
             }
@@ -604,7 +622,14 @@ public class PlaceableManager extends Manager implements Serializable {
         return false;
     }
 
-    public boolean placeCurrent() {
+    public boolean placeCurrent(Player p) {
+        int slot = p.getSelectedItemIndex();
+        String itemName = playerGetInventoryItemName(slot);
+        if(currentlyPlacing != null && !currentlyPlacing.getItemName().equals(itemName)) {
+            p.handleRightClick();
+            registry.showMessage("Error", "You must stay selected on a placeable on your quick-bar in order to place it.");
+            currentlyPlacing = null;
+        }
         if (currentlyPlacing != null && currentlyPlacing.checkCanPlace()) {
             String currentlyPlacingType = currentlyPlacing.getType();
             if (currentlyPlacingType.equals("EmeraldTeleporter")) {
@@ -627,11 +652,11 @@ public class PlaceableManager extends Manager implements Serializable {
             }
             currentlyPlacing.setState(Placeable.State.Placed);
             if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     registry.getNetworkThread().sendData(currentlyPlacing);
                 }
             } else if (gameController.multiplayerMode == gameController.multiplayerMode.CLIENT && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     registry.getNetworkThread().sendData("place " + currentlyPlacing.getType() + " " + currentlyPlacing.getMapX() + " " + currentlyPlacing.getMapY());
                 }
                 currentlyPlacing.isDirty = true;
@@ -643,12 +668,14 @@ public class PlaceableManager extends Manager implements Serializable {
         return false;
     }
 
-    public void cancelPlaceable() {
-        if (currentlyPlacing()) {
-            if (placeables.containsKey(currentlyPlacing.getId())) {
-                placeables.remove(currentlyPlacing.getId());
+    public void cancelPlaceable(Player p) {
+        if (p == registry.getPlayerManager().getCurrentPlayer()) {
+            if (currentlyPlacing()) {
+                if (placeables.containsKey(currentlyPlacing.getId())) {
+                    placeables.remove(currentlyPlacing.getId());
+                }
+                currentlyPlacing = null;
             }
-            currentlyPlacing = null;
         }
     }
 
@@ -841,7 +868,7 @@ public class PlaceableManager extends Manager implements Serializable {
                                 m.fear(placeable.getCenterPoint(), placeable.getFearDuration());
 
                                 if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                                    if (registry.getNetworkThread().readyForUpdates) {
+                                    if (registry.getNetworkThread().readyForUpdates()) {
                                         UpdateMonster um = new UpdateMonster(m.getId());
                                         um.mapX = m.getMapX();
                                         um.mapY = m.getMapY();
@@ -870,7 +897,7 @@ public class PlaceableManager extends Manager implements Serializable {
                 for (String key : placeables.keySet()) {
                     placeable = (Placeable) placeables.get(key);
                     if (placeable.canDestroy()) {
-                        if (placeable.getPerimeter().intersects(m.getPerimeter())) {
+                        if (placeable.getPerimeter().intersects(m.getPerimeter()) && placeable.isActivated()) {
                             m.applyDamage(placeable.getTouchDamage(), registry.getPlayerManager().getCurrentPlayer(), true);
                         }
                     }
@@ -940,7 +967,8 @@ public class PlaceableManager extends Manager implements Serializable {
     }
 
     protected Point getTownSnap() {
-        if (currentlyPlacing != null) {
+        Placeable placeable = currentlyPlacing;
+        if (placeable != null) {
             int x = (gameController.getCurrentMousePosition().x
                     + gameController.getMapOffsetX())
                     / BlockManager.getBlockWidth()
@@ -950,11 +978,16 @@ public class PlaceableManager extends Manager implements Serializable {
             if (xStartEnd[0] != -1) {
                 if (x < xStartEnd[0]) {
                     x = xStartEnd[0];
-                } else if (x + currentlyPlacing.getWidth() > xStartEnd[1]) {
-                    x = xStartEnd[1] - currentlyPlacing.getWidth();
+                } else if (x + placeable.getWidth() > xStartEnd[1]) {
+                    x = xStartEnd[1] - placeable.getWidth();
                 }
             }
-            int y = findNextFloor(x, currentlyPlacing.getMapY(), 1) - BlockManager.getBlockHeight();
+            int y = findNextFloor(x, placeable.getMapY(), 1) - BlockManager.getBlockHeight();
+
+            if (y <= 0) {
+                y = placeable.getMapY();
+            }
+
             Point p = new Point(x, y);
             return p;
         } else {
@@ -1061,16 +1094,23 @@ public class PlaceableManager extends Manager implements Serializable {
         }
     }
 
+    public void processPlaceableUpdateUDP(UDPPlaceable up) {
+        if (up != null) {
+            if (placeables.containsKey(up.id)) {
+                Placeable placeable = placeables.get(up.id);
+                if (placeable != null) {
+                    placeable.processUpdate(up);
+                }
+            }
+        }
+    }
+
     public void processPlaceableUpdate(UpdatePlaceable up) {
         EIError.debugMsg("Setting Placeable " + up.id + ", Action: " + up.action);
         if (up != null) {
             if (placeables.containsKey(up.id)) {
                 Placeable placeable = placeables.get(up.id);
                 if (placeable != null) {
-                    placeable.setHitPoints(up.hitPoints, up.totalHitPoints);
-                    if (up.totalHitPoints > 0) {
-                        placeable.setHitPoints(up.hitPoints, up.totalHitPoints);
-                    }
                     if (up.mapY > 0) {
                         placeable.setPosition(up.mapX, up.mapY);
                     }
@@ -1091,7 +1131,7 @@ public class PlaceableManager extends Manager implements Serializable {
                 }
             } else {
                 if (gameController.multiplayerMode == gameController.multiplayerMode.CLIENT && registry.getNetworkThread() != null) {
-                    if (registry.getNetworkThread().readyForUpdates) {
+                    if (registry.getNetworkThread().readyForUpdates()) {
                         EIError.debugMsg("Placeable not found - need " + up.id);
                         registry.getNetworkThread().sendData("send placeable data: " + up.id);
                     }
@@ -1106,5 +1146,15 @@ public class PlaceableManager extends Manager implements Serializable {
 
     private void writeObject(ObjectOutputStream aOutputStream) throws Exception {
         aOutputStream.defaultWriteObject();
+    }
+
+    @Override
+    public Object clone() {
+        Object ret = null;
+        try {
+            ret = super.clone();
+        } catch (CloneNotSupportedException e) {
+        }
+        return ret;
     }
 }

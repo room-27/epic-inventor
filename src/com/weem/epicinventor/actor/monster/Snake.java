@@ -1,8 +1,14 @@
 package com.weem.epicinventor.actor.monster;
 
 import com.weem.epicinventor.*;
+import com.weem.epicinventor.actor.*;
 import com.weem.epicinventor.ai.*;
 import com.weem.epicinventor.utility.*;
+
+import java.awt.*;
+import java.awt.image.*;
+import java.awt.geom.AffineTransform;
+import java.io.*;
 
 public class Snake extends Monster {
 
@@ -15,7 +21,7 @@ public class Snake extends Monster {
         displayName = "Snake";
 
         monsterManager = mm;
-        
+
         difficultyFactor = 0.50f;
 
         adjustHPForLevel();
@@ -32,7 +38,10 @@ public class Snake extends Monster {
         adjustTouchDamageForLevel();
 
         dropChances.addDropChance("Fang", 75.0f, 1, 2);
- 
+        dropChances.addDropChance("WeemsDiceBag", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("ForrestsLaptop", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("BrandonsAbacus", 0.20f, 1, 1); //1 in 500 chance
+
         ai = new AI(registry, this);
         ai.clearGoals();
         ai.addGoal(AI.GoalType.ATTACK_PLAYER, "", (Rand.getRange(0, 1) + Rand.getFloat()));

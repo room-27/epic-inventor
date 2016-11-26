@@ -170,22 +170,25 @@ public class HUDFarm extends HUD {
                                 int qty = hudManager.playerGetInventoryQty(selectedStart);
                                 int level = hudManager.playerGetInventoryLevel(selectedStart);
 
-                                if (itemName.contains("Seed")) {
-                                    if (registry.getInvHUDFrom().equals("Farm")) {
-                                        if (farm != null) {
-                                            farm.swapInventory(selectedStart, i);
-                                        }
-                                    } else if (registry.getInvHUDFrom().equals("QuickBar")) {
-                                        if (!registry.getIsQuickBarLocked()) {
-                                            if (!itemName.isEmpty() && qty > 0 && farm != null) {
-                                                hudManager.playerDeleteInventory(selectedStart, 1);
-                                                farm.addItem(i, itemName, 1, level);
+                                if (registry.getInvHUDFrom().equals("Farm")) {
+                                    if (farm != null) {
+                                        farm.swapInventory(selectedStart, i);
+                                    }
+                                } else {
+                                    if (itemName.contains("Seed")) {
+                                        if (registry.getInvHUDFrom().equals("QuickBar")) {
+                                            if (!registry.getIsQuickBarLocked()) {
+                                                if (!itemName.isEmpty() && qty > 0 && farm != null) {
+                                                    if (farm.addItem(i, itemName, 1, level, false)) {
+                                                        hudManager.playerDeleteInventory(selectedStart, 1);
+                                                    }
+                                                }
                                             }
-                                        }
-                                    } else {
-                                        if (!itemName.isEmpty() && qty > 0 && farm != null) {
-                                            if (farm.addItem(i, itemName, 1, level)) {
-                                                hudManager.playerDeleteInventory(selectedStart, 1);
+                                        } else {
+                                            if (!itemName.isEmpty() && qty > 0 && farm != null) {
+                                                if (farm.addItem(i, itemName, 1, level, false)) {
+                                                    hudManager.playerDeleteInventory(selectedStart, 1);
+                                                }
                                             }
                                         }
                                     }

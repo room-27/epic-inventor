@@ -118,7 +118,8 @@ public class World implements Serializable {
         EIError.debugMsg("GenerateWorld Start", EIError.ErrorLevel.Notice);
         Game.loadingText = "Generating World";
         float[][] noise;
-
+        int xMin,xMax;
+        
         int[][] newBlockArray = GenerateConstant(size * HORIZ_BLOCKS, size, GROUND_LEVEL, "Dirt");
 
         // Add gaps.
@@ -127,8 +128,8 @@ public class World implements Serializable {
             noise = InterpolateData(noise, 32, size);
             for (int i = 0; i < MNT_FACTOR; i++) {
                 if(randGen.nextFloat() > .10) {
-                    int xMin = randGen.nextInt(size - 50) + b*size;
-                    int xMax = Math.max(randGen.nextInt((b + 1) * size - xMin) + xMin, xMin + 50);
+                    xMin = Rand.getRange(b*size, (b+1)*size) / 2;
+                    xMax = xMin + Rand.getRange(xMin, (b+1)*size);
                     PaintWithRandomWalk(newBlockArray, noise, size, Math.max(randGen.nextInt(size / 64), 1), "None", false, xMin, xMax, 0, GROUND_LEVEL, size / 8);
                 } else {
                     PaintRectangle(newBlockArray, blockManager.getRandomIdByGroup("None"), randGen.nextInt(HORIZ_BLOCKS*size - 1), randGen.nextInt(GROUND_LEVEL), Rand.getRange(30, size / 4), Rand.getRange(25, size / 16), 0, HORIZ_BLOCKS*size, 0, GROUND_LEVEL);
@@ -171,7 +172,9 @@ public class World implements Serializable {
             noise = GeneratePerlinNoise(32);
             noise = InterpolateData(noise, 32, size);
             for (int i = 0; i < oreFactor; i++) {
-                PaintWithRandomWalk(newBlockArray, noise, size, Math.max(randGen.nextInt(size / 64), 1), "Stone", false, b * size, (b + 1) * size - 1, 20, GROUND_LEVEL, size / 2);
+                xMin = Rand.getRange(b*size, (b+1)*size) / 2;
+                xMax = xMin + Rand.getRange(xMin, (b+1)*size);
+                PaintWithRandomWalk(newBlockArray, noise, size, Math.max(randGen.nextInt(size / 64), 1), "Stone", false, xMin, xMax, 20, GROUND_LEVEL, size / 2);
             }
         }
 
@@ -181,7 +184,9 @@ public class World implements Serializable {
             noise = GeneratePerlinNoise(32);
             noise = InterpolateData(noise, 32, size);
             for (int i = 0; i < oreFactor; i++) {
-                PaintWithRandomWalk(newBlockArray, noise, size, Math.max(randGen.nextInt(size / 64), 1), "Stone", false, b * size, (b + 1) * size - 1, 20, GROUND_LEVEL, size / 2);
+                xMin = Rand.getRange(b*size, (b+1)*size) / 2;
+                xMax = xMin + Rand.getRange(xMin, (b+1)*size);
+                PaintWithRandomWalk(newBlockArray, noise, size, Math.max(randGen.nextInt(size / 64), 1), "Stone", false, xMin, xMax, 20, GROUND_LEVEL, size / 2);
             }
         }
 
@@ -192,7 +197,9 @@ public class World implements Serializable {
             noise = GeneratePerlinNoise(32);
             noise = InterpolateData(noise, 32, size);
             for (int i = 0; i < oreFactor; i++) {
-                PaintWithRandomWalk(newBlockArray, noise, size, Math.max(randGen.nextInt(size / 64), 1), "Sand", false, b * size, (b + 1) * size - 1, 20, GROUND_LEVEL, size / 2);
+                xMin = Rand.getRange(b*size, (b+1)*size) / 2;
+                xMax = xMin + Rand.getRange(xMin, (b+1)*size);
+                PaintWithRandomWalk(newBlockArray, noise, size, Math.max(randGen.nextInt(size / 64), 1), "Sand", false, xMin, xMax, 20, GROUND_LEVEL, size / 2);
             }
         }
 
@@ -203,7 +210,9 @@ public class World implements Serializable {
             noise = GeneratePerlinNoise(32);
             noise = InterpolateData(noise, 32, size);
             for (int i = 0; i < oreFactor; i++) {
-                PaintWithRandomWalk(newBlockArray, noise, size, Math.max(randGen.nextInt(size / 64), 1), "Mud", false, b * size, (b + 1) * size - 1, 20, GROUND_LEVEL, size / 2);
+                xMin = Rand.getRange(b*size, (b+1)*size) / 2;
+                xMax = xMin + Rand.getRange(xMin, (b+1)*size);
+                PaintWithRandomWalk(newBlockArray, noise, size, Math.max(randGen.nextInt(size / 64), 1), "Mud", false, xMin, xMax, 20, GROUND_LEVEL, size / 2);
             }
         }
 
@@ -457,7 +466,7 @@ public class World implements Serializable {
             int paintRadius, String group, boolean dontStopAtEdge) {
         int x = Rand.getRange(paintRadius, size - paintRadius);
         int z = Rand.getRange(paintRadius, size - paintRadius);
-        EIError.debugMsg("Start 1" + x + " " + z + " " + paintRadius, EIError.ErrorLevel.Notice);
+        EIError.debugMsg("Start 1 " + x + " " + z + " " + paintRadius, EIError.ErrorLevel.Notice);
         PaintWithRandomWalk(
                 currentBlockArray, noiseData, size,
                 paintRadius, group, dontStopAtEdge,
@@ -470,7 +479,7 @@ public class World implements Serializable {
             int xMin, int xMax, int zMin, int zMax, int maxLoops) {
         int x = Rand.getRange(xMin + paintRadius, xMax - paintRadius);
         int z = Rand.getRange(zMin + paintRadius, zMax - paintRadius);
-        EIError.debugMsg("Start 2" + zMax + " " + zMin + " " + paintRadius, EIError.ErrorLevel.Notice);
+        EIError.debugMsg("Start 2 " + zMax + " " + zMin + " " + paintRadius, EIError.ErrorLevel.Notice);
         PaintWithRandomWalk(
                 currentBlockArray, noiseData, size,
                 paintRadius, group, dontStopAtEdge,
@@ -481,7 +490,7 @@ public class World implements Serializable {
             int[][] currentBlockArray, float[][] noiseData, int size,
             int paintRadius, String group, boolean dontStopAtEdge,
             int x, int z, int xOffset, int maxLoops) {
-        EIError.debugMsg("Start 3" + size + " " + paintRadius + " " + dontStopAtEdge + " " + x + " " + z + " " + xOffset + " ", EIError.ErrorLevel.Notice);
+        EIError.debugMsg("Start 3 " + size + " " + paintRadius + " " + dontStopAtEdge + " " + x + " " + z + " " + xOffset + " ", EIError.ErrorLevel.Notice);
         if (z < size / 50) {
             z = 0;
         }
@@ -512,8 +521,8 @@ public class World implements Serializable {
             }
             paintRadius = Math.min(Math.max(paintRadius, 2), 10);
 
-            if(x < noiseData.length && z < noiseData[x].length) {
-                oldNoise = noiseData[x][z];
+            if(x%size < noiseData.length && z < noiseData[x%size].length) {
+                oldNoise = noiseData[x%size][z];
             }
 
             PaintAtPoint(currentBlockArray, group, paintRadius, x + xOffset, z, 0, size * HORIZ_BLOCKS, 0, size);
@@ -530,7 +539,7 @@ public class World implements Serializable {
             currentZ = z + (int)(paintRadius * Math.sin(Math.toRadians(degrees)));
             groundIssue = false;
             if(worldGround != null) {
-                if(currentX < 0 || currentX >= size || currentZ < 0 || currentZ >= size) {
+                if(currentX < 0 || currentX + xOffset >= size * HORIZ_BLOCKS || currentZ < 0 || currentZ >= size) {
                     break;
                 }
                 if(worldGround[currentX + xOffset] < currentZ + paintRadius * 3) {
@@ -538,16 +547,16 @@ public class World implements Serializable {
                 }
             }
             if(currentX > 0 && currentX < size && currentZ < size && currentZ > 0 && !groundIssue) {
-                newNoise = noiseData[currentX][currentZ];
+                newNoise = noiseData[currentX%size][currentZ];
                 newX = currentX;
                 newZ = currentZ;
             } else {
                 newX = x - (int)(paintRadius * Math.cos(Math.toRadians(degrees)));
                 newZ = z - (int)(paintRadius * Math.sin(Math.toRadians(degrees)));
-                if(newX < 0 || newX >= size || newZ < 0 || newZ >= size) {
+                if(newX < 0 || newX >= size * HORIZ_BLOCKS || newZ < 0 || newZ >= size) {
                     break;
                 }
-                newNoise = noiseData[newX][newZ];
+                newNoise = noiseData[newX%size][newZ];
             }
             x = newX;
             z = newZ;
@@ -562,16 +571,18 @@ public class World implements Serializable {
 
     public int[] GetComposition(int[][] currentBlockArray, int paintValue, int paintRadius, int x, int z, int xOffset, int size) {
         int[] blockTypes = new int[3];
+        BlockType bt = null;
         blockTypes[0] = 0;
         blockTypes[1] = 0;
         blockTypes[2] = 0;
         for (int dx = -paintRadius; dx <= paintRadius; dx++) {
             for (int dz = -paintRadius; dz <= paintRadius; dz++) {
                 if (x - xOffset + dx >= 0 && z + dz >= 0 && x - xOffset + dx < size && z + dz < size) {
-                    if (
-                            currentBlockArray[x + dx][z + dz] == blockManager.getRandomIdByGroup("None") ||
-                            currentBlockArray[x + dx][z + dz] == blockManager.getRandomIdByGroup("Town")
-                       ) {
+                    bt = null;
+                    if(x + dx > 0 && x + dx < currentBlockArray.length && z + dz > 0 && z + dz < currentBlockArray[0].length) {
+                        bt = blockManager.getBlockTypeById((short)currentBlockArray[x + dx][z + dz]);
+                    }
+                    if (bt == null || bt.getGroup().equals("Town")) {
                         blockTypes[0]++;
                     } else if (currentBlockArray[x + dx][z + dz] == paintValue) {
                         blockTypes[1]++;
@@ -586,13 +597,17 @@ public class World implements Serializable {
 
     public boolean PaintAtPoint(int[][] currentBlockArray, String group, int paintRadius, int x, int z, int minX, int maxX, int minZ, int maxZ) {
         boolean painted = false;
+        BlockType bt = null;
         for (int dx = -paintRadius; dx <= paintRadius; dx++) {
             for (int dz = -paintRadius; dz <= paintRadius; dz++) {
-                if (x + dx >= minX && z + dz >= minZ && x + dx < maxX && z + dz < maxZ) {
+                if (x + dx >= minX && x + dx < maxX && z + dz >= minZ && z + dz < maxZ) {
+                    bt = null;
+                    if(x + dx > 0 && x + dx < currentBlockArray.length && z + dz > 0 && z + dz < currentBlockArray[0].length) {
+                        bt = blockManager.getBlockTypeById((short)currentBlockArray[x + dx][z + dz]);
+                    }
                     if (
                             dx * dx + dz * dz < paintRadius * paintRadius &&
-                            currentBlockArray[x + dx][z + dz] != blockManager.getRandomIdByGroup("None") &&
-                            currentBlockArray[x + dx][z + dz] != blockManager.getRandomIdByGroup("Town")
+                            !(bt == null || bt.getGroup().equals("Town"))
                        ) {
                         currentBlockArray[x + dx][z + dz] = blockManager.getRandomIdByGroup(group);
                         painted = true;
@@ -605,13 +620,17 @@ public class World implements Serializable {
 
     public boolean PaintAtPoint(int[][] currentBlockArray, String group, int paintRadius, int x, int z, int xOffset, int size) {
         boolean painted = false;
+        BlockType bt = null;
         for (int dx = -paintRadius; dx <= paintRadius; dx++) {
             for (int dz = -paintRadius; dz <= paintRadius; dz++) {
-                if (x - xOffset + dx >= 0 && z + dz >= 0 && x - xOffset + dx < size && z + dz < size) {
+                if (x + dx >= xOffset && z + dz >= 0 && x + dx < xOffset + size && z + dz < size) {
+                    bt = null;
+                    if(x + dx > 0 && x + dx < currentBlockArray.length && z + dz > 0 && z + dz < currentBlockArray[0].length) {
+                        bt = blockManager.getBlockTypeById((short)currentBlockArray[x + dx][z + dz]);
+                    }
                     if (
                             dx * dx + dz * dz < paintRadius * paintRadius &&
-                            currentBlockArray[x + dx][z + dz] != blockManager.getRandomIdByGroup("None") &&
-                            currentBlockArray[x + dx][z + dz] != blockManager.getRandomIdByGroup("Town")
+                            !(bt == null || bt.getGroup().equals("Town"))
                        ) {
                         currentBlockArray[x + dx][z + dz] = blockManager.getRandomIdByGroup(group);
                         painted = true;
@@ -624,14 +643,15 @@ public class World implements Serializable {
 
     public boolean PaintRectangle(int[][] currentBlockArray, int paintValue, int x, int z, int width, int height, int minX, int maxX, int minZ, int maxZ) {
         boolean painted = false;
+        BlockType bt = null;
         for (int dx = x; dx <= x+width; dx++) {
             for (int dz = z; dz <= z+height; dz++) {
                 if (dx >= minX && dz >= minZ && dx < maxX && dz < maxZ) {
-
-                    if (
-                            currentBlockArray[dx][dz] != blockManager.getRandomIdByGroup("None") &&
-                            currentBlockArray[dx][dz] != blockManager.getRandomIdByGroup("Town")
-                       ) {
+                    bt = null;
+                    if(x + dx > 0 && x + dx < currentBlockArray.length && z + dz > 0 && z + dz < currentBlockArray[0].length) {
+                        bt = blockManager.getBlockTypeById((short)currentBlockArray[x + dx][z + dz]);
+                    }
+                    if (!(bt == null || bt.getGroup().equals("Town"))) {
                         currentBlockArray[dx][dz] = paintValue;
                         painted = true;
                     }

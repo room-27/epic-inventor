@@ -32,7 +32,7 @@ public class ProjectileManager extends Manager {
             Projectile projectile = new Projectile(this, registry, source, im, sp, start, end, f, p, dt, d);
 
             if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     UpdateProjectile up = new UpdateProjectile();
                     up.id = projectile.getId();
                     if (source != null) {
@@ -52,7 +52,7 @@ public class ProjectileManager extends Manager {
             }
 
             registerProjectile(projectile);
-            
+
             return;
         } else {
             return;
@@ -64,7 +64,7 @@ public class ProjectileManager extends Manager {
             ReturningProjectile projectile = new ReturningProjectile(this, registry, source, im, sp, start, end, f, p, dt, d);
 
             if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     UpdateProjectile up = new UpdateProjectile();
                     up.id = projectile.getId();
                     if (source != null) {
@@ -84,7 +84,7 @@ public class ProjectileManager extends Manager {
             }
 
             registerProjectile(projectile);
-            
+
             return projectile;
         } else {
             return null;
@@ -115,6 +115,42 @@ public class ProjectileManager extends Manager {
             SoundClip cl = new SoundClip(registry, "Player/HitProjectile", p);
         }
     }
+
+    public void removeAll(Rectangle area) {
+        Projectile projectile = null;
+        ArrayList deadProjectiles = new ArrayList();
+
+        try {
+            for (String key : projectiles.keySet()) {
+                projectile = (Projectile) projectiles.get(key);
+                if (projectile != null) {
+                    if (projectile.getRect().intersects(area)) {
+                        projectile.stopSound();
+                        projectile.cleanUp();
+                        deadProjectiles.add(key);
+                        if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
+                            if (registry.getNetworkThread().readyForUpdates()) {
+                                UpdateProjectile up = new UpdateProjectile();
+                                up.id = projectile.getId();
+                                up.action = "Destroy";
+                                registry.getNetworkThread().sendData(up);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (deadProjectiles.size() > 0) {
+                for (int i = 0; i < deadProjectiles.size(); i++) {
+                    projectiles.remove((String) deadProjectiles.get(i));
+                }
+            }
+        } catch (ConcurrentModificationException concEx) {
+            //another thread was trying to modify projectiles while iterating
+            //we'll continue and the new item can be grabbed on the next update
+        }
+    }
+
     public void removeAll() {
         Projectile projectile = null;
         ArrayList deadProjectiles = new ArrayList();
@@ -122,7 +158,11 @@ public class ProjectileManager extends Manager {
         try {
             for (String key : projectiles.keySet()) {
                 projectile = (Projectile) projectiles.get(key);
-                deadProjectiles.add(key);
+                if (projectile != null) {
+                    projectile.stopSound();
+                    projectile.cleanUp();
+                    deadProjectiles.add(key);
+                }
             }
 
             if (deadProjectiles.size() > 0) {
@@ -148,6 +188,7 @@ public class ProjectileManager extends Manager {
                 projectile = (Projectile) projectiles.get(key);
                 projectile.update();
                 if (projectile.isDirty()) {
+                    projectile.cleanUp();
                     deadProjectiles.add(key);
                 }
             }

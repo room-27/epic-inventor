@@ -8,7 +8,7 @@ public class InventorySlot implements Serializable {
 
     protected static final long serialVersionUID = 7653293255956181100L;
     
-    private Inventory inventory;
+    transient private Inventory inventory;
     transient private Registry registry;
     private ItemType itemType;
     private Item item;
@@ -22,6 +22,7 @@ public class InventorySlot implements Serializable {
 
     public void setTransient(Registry rg) {
         registry = rg;
+        inventory = null;
         if(itemType != null) {
             itemType = rg.getItemManager().getItemType(itemType.getName());
             if(itemType.getName().equals("ScrapHammer")) {

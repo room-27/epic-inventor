@@ -13,6 +13,7 @@ public class HUDManager extends Manager {
     private HUDPortrait portraitHUD = null;
     private HUDWeaponInfo weaponHUD = null;
     private HUDArmorInfo armorHUD = null;
+    private HUDMiniMap miniMapHUD = null;
 
     public enum HUDType {
 
@@ -23,6 +24,8 @@ public class HUDManager extends Manager {
         Farm,
         LevelUp,
         Master,
+        MiniMap,
+        Oobaboo,
         Pause,
         Portrait,
         QuickBar,
@@ -38,7 +41,7 @@ public class HUDManager extends Manager {
         ScreenSettings,
         Tutorial,
         Version,
-        WeaponInfo
+        WeaponInfo,
     }
 
     public HUDManager(GameController gc, Registry rg) {
@@ -52,11 +55,6 @@ public class HUDManager extends Manager {
         HUD hud = null;
 
         switch (whichHUD) {
-            case AreYouSure:
-                hud = new HUDAreYouSure(this, registry, (getPWidth() - 760) / 2, 0, 760, 560);
-                hud.setName("AreYouSure");
-                huds.add(hud);
-                break;
             case ArmorInfo:
                 armorHUD = new HUDArmorInfo(this, registry, (getPWidth() - 264) / 2, 242, 232, 184);
                 armorHUD.setName("ArmorInfo");
@@ -80,6 +78,11 @@ public class HUDManager extends Manager {
             case Master:
                 hud = new HUDMaster(this, registry, (getPWidth() - 752) / 2, 5, 752, 422);
                 hud.setName("Master");
+                huds.add(hud);
+                break;
+            case Oobaboo:
+                hud = new HUDOobaboo(this, registry, (getPWidth() - 349) / 2, (getPHeight() - 390) / 2, 349, 390);
+                hud.setName("Oobaboo");
                 huds.add(hud);
                 break;
             case Pause:
@@ -162,6 +165,11 @@ public class HUDManager extends Manager {
                 weaponHUD.setName("WeaponInfo");
                 huds.add(weaponHUD);
                 break;
+            case MiniMap:
+                miniMapHUD = new HUDMiniMap(this, registry, (getPWidth() - 264) / 2, 242, 232, 184, "");
+                miniMapHUD.setName("WeaponInfo");
+                huds.add(miniMapHUD);
+                break;
         }
     }
 
@@ -191,6 +199,15 @@ public class HUDManager extends Manager {
                 huds.remove(i);
             }
         }
+    }
+
+    public HUD loadAreYourSure(int slot) {
+        HUD hud = null;
+
+        hud = new HUDAreYouSure(this, registry, (getPWidth() - 760) / 2, 0, 760, 560, slot);
+        huds.add(hud);
+
+        return hud;
     }
 
     public HUD loadContainerHUD(ItemContainer ic) {
@@ -583,6 +600,12 @@ public class HUDManager extends Manager {
         }
     }
 
+    public void showMiniMap(boolean s) {
+        if (miniMapHUD != null) {
+            miniMapHUD.shouldRender = s;
+        }
+    }
+
     public void toggleMasterHUD() {
         HUD hud = null;
 
@@ -594,12 +617,40 @@ public class HUDManager extends Manager {
         checkRestoreCuror();
     }
 
+    public void updateResourceName(String rn) {
+        if (miniMapHUD != null) {
+            miniMapHUD.updateResourceName(rn);
+        }
+    }
+
+    public void updateMasterHUD() {
+        HUD hud = null;
+
+        for (int i = (huds.size() - 1); i >= 0; i--) {
+            hud = huds.get(i);
+            hud.LoadMatchingItems();
+        }
+
+        checkRestoreCuror();
+    }
+
     public void togglePauseHUD() {
         HUD hud = null;
 
         for (int i = (huds.size() - 1); i >= 0; i--) {
             hud = huds.get(i);
             hud.togglePauseHUD();
+        }
+
+        checkRestoreCuror();
+    }
+
+    public void showOobabooHUD() {
+        HUD hud = null;
+
+        for (int i = (huds.size() - 1); i >= 0; i--) {
+            hud = huds.get(i);
+            hud.showOobabooHUD();
         }
 
         checkRestoreCuror();

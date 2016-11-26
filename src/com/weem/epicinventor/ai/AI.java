@@ -21,7 +21,7 @@ public class AI implements Serializable {
     private String player;
 
     public enum GoalType {
-        WANDER, FLEE, FOLLOW, STARE, BOSS_ORC, RESOURCE_MONSTER, ATTACK_MOBS, ATTACK_PLAYER, ATTACK_PLAYER_LUNGE, ATTACK_PLAYER_RANGED, ATTACK_PLAYER_RANGED_AGGRESSIVE, ATTACK_PLACEABLE, ATTACK_TOWN
+        WANDER, FLEE, FOLLOW, STARE, BOSS_ORC, SNAIL_RIDER, RESOURCE_MONSTER, ATTACK_MOBS, ATTACK_PLAYER, ATTACK_PLAYER_LUNGE, ATTACK_PLAYER_RANGED, ATTACK_PLAYER_RANGED_AGGRESSIVE, ATTACK_PLACEABLE, ATTACK_TOWN, OOBABOO_GATHERER, OOBABOO_HEALER, OOBABOO_WARRIOR
     };
 
     public AI(Registry r, Actor a) {
@@ -189,6 +189,9 @@ public class AI implements Serializable {
             case BOSS_ORC:
                 goals.add(new GoalBossOrc(this, registry, target, bias));
                 return true;
+            case SNAIL_RIDER:
+                goals.add(new GoalSnailRider(this, registry, target, bias));
+                return true;
             case WANDER:
                 goals.add(new GoalWander(this, registry, target, bias));
                 return true;
@@ -224,6 +227,15 @@ public class AI implements Serializable {
                 break;
             case ATTACK_TOWN:
                 break;
+            case OOBABOO_GATHERER:
+                goals.add(new GoalOobabooGatherer(this, registry, target, bias));
+                return true;
+            case OOBABOO_HEALER:
+                goals.add(new GoalOobabooHealer(this, registry, target, bias));
+                return true;
+            case OOBABOO_WARRIOR:
+                goals.add(new GoalOobabooWarrior(this, registry, target, bias));
+                return true;
         }
 
         return false;

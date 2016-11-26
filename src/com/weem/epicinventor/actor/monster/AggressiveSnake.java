@@ -33,6 +33,9 @@ public class AggressiveSnake extends Monster {
         adjustTouchDamageForLevel();
 
         dropChances.addDropChance("Fang", 75.0f, 1, 2);
+        dropChances.addDropChance("WeemsDiceBag", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("ForrestsLaptop", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("BrandonsAbacus", 0.20f, 1, 1); //1 in 500 chance
 
         ai = new AI(registry, this);
         ai.clearGoals();

@@ -22,14 +22,20 @@ public class NetworkThread extends Thread {
     private int port;
     private ObjectInputStream input;
     private ObjectOutputStream output;
+    protected int currentStartCollumn;
     public boolean keepRunning = true;
     public boolean readyForUpdates = false;
+    public ServerReceiveThread serverReceiveThread;
+    public ClientReceiveThread clientReceiveThread;
+    protected static int collumnChunkSize;
 
     public NetworkThread(Registry r, GameController gc, String i, int p) {
         registry = r;
         gameController = gc;
         ip = i;
         port = p;
+        currentStartCollumn = 0;
+        collumnChunkSize = 200;
     }
 
     @Override
@@ -83,6 +89,11 @@ public class NetworkThread extends Thread {
         EIError.debugMsg("Waiting for Connection...");
         try {
             clientSocket = serverSocket.accept();
+
+            DatagramSocket socket = new DatagramSocket(5556);
+            System.out.println(port);
+            serverReceiveThread = new ServerReceiveThread(registry, gameController, socket, port);
+            serverReceiveThread.start();
         } catch (IOException e) {
             gameController.showMessage("Error", "Couldn't accept connection...");
             return;
@@ -126,10 +137,23 @@ public class NetworkThread extends Thread {
                                 keepRunning = false;
                             } else if (data.toString().equals("send block manager")) {
                                 EIError.debugMsg("Sending Block Manager Data...");
-                                BlockManager bm = registry.getBlockManager();
+                                BlockManager bm = (BlockManager)(registry.getBlockManager().clone());
+                                bm.clearBlockArray();
                                 sendData(bm);
                                 bm = null;
                                 EIError.debugMsg("Block Manager Data Sent");
+                            } else if (data.toString().equals("send block manager chunk")) {
+                                EIError.debugMsg("Sending Block Manager Data...");
+                                //BlockManager bm = registry.getBlockManager();
+                                short[][] blockChunk = registry.getBlockManager().getBlockCollumns(currentStartCollumn, currentStartCollumn + NetworkThread.collumnChunkSize);
+                                currentStartCollumn += NetworkThread.collumnChunkSize;
+                                sendData(blockChunk);
+                                blockChunk = null;
+                                EIError.debugMsg("Block Manager Data Sent 0..200");
+                                try {
+                                    sleep(10);
+                                } catch (InterruptedException ex) {
+                                }
                             } else if (data.toString().equals("send placable manager")) {
                                 EIError.debugMsg("Sending Placeable Manager Data...");
                                 PlaceableManager pm = registry.getPlaceableManager();
@@ -152,13 +176,13 @@ public class NetworkThread extends Thread {
                                 EIError.debugMsg("Sending Player Data...");
                                 sendData(registry.getPlayerManager().getCurrentPlayer());
                                 EIError.debugMsg("Player Data Sent");
-                            } else if (data.toString().substring(0, 6).equals("place ")) {
+                            } else if (data.toString().length() >= 6 && data.toString().substring(0, 6).equals("place ")) {
                                 String parts[] = data.toString().split(" ");
                                 if (parts.length == 4) {
                                     EIError.debugMsg("Adding placeable...");
                                     registry.getPlaceableManager().loadPlaceable(parts[1], Integer.parseInt(parts[2]), Integer.parseInt(parts[3]), Placeable.State.Placed);
                                 }
-                            } else if (data.toString().substring(0, 18).equals("send monster data:")) {
+                            } else if (data.toString().length() >= 18 && data.toString().substring(0, 18).equals("send monster data:")) {
                                 String id = data.toString().substring(19);
                                 Monster monster = registry.getMonsterManager().getMonsterById(id);
                                 if (monster != null) {
@@ -166,7 +190,7 @@ public class NetworkThread extends Thread {
                                     sendData(monster);
                                     EIError.debugMsg("Monster Data Sent");
                                 }
-                            } else if (data.toString().substring(0, 20).equals("send placeable data:")) {
+                            } else if (data.toString().length() >= 20 && data.toString().substring(0, 20).equals("send placeable data:")) {
                                 String id = data.toString().substring(21);
                                 Placeable placeable = registry.getPlaceableManager().getPlaceableById(id);
                                 if (placeable != null) {
@@ -198,12 +222,15 @@ public class NetworkThread extends Thread {
                             registry.getPlaceableManager().processPlaceableUpdate(up);
                             EIError.debugMsg("Placeable Updated");
                         }
+
                         data = null;
                     }
                 } catch (IOException e) {
                     EIError.debugMsg("Network IO Error: " + e.getMessage());
                 } catch (ClassNotFoundException e) {
                     EIError.debugMsg("Network Class Error: " + e.getMessage());
+                } catch (Exception e) {
+                    EIError.debugMsg("Network Error: " + e.getMessage());
                 }
             }
         }
@@ -252,8 +279,17 @@ public class NetworkThread extends Thread {
             input = new ObjectInputStream(clientSocket.getInputStream());
 
             EIError.debugMsg("IO Created");
-
+            
             output.writeObject("send block manager");
+            data = input.readObject();
+            BlockManager bm = (BlockManager) data;
+            bm.resetBlockArray(registry.getBlockManager().getMapCols(), registry.getBlockManager().getMapRows());
+            bm.setTransient(registry);
+            gameController.setBlockManager(bm);
+            bm = null;
+            EIError.debugMsg("Block Manager set");
+            
+            output.writeObject("send block manager chunk");
             Game.loadingText = "Getting World Data...";
 
             while (keepRunning && clientSocket.isConnected()) {
@@ -274,14 +310,34 @@ public class NetworkThread extends Thread {
                             gameController.showMessage("Success", "Message: " + data);
                         }
                     }
-                } else if (data.getClass().equals(BlockManager.class)) {
+//                } else if (data.getClass().equals(BlockManager.class)) {
+//                    EIError.debugMsg("Setting Block Manager...");
+//                    BlockManager bm = (BlockManager) data;
+//                    bm.setTransient(registry);
+//                    gameController.setBlockManager(bm);
+//                    bm = null;
+//                    EIError.debugMsg("Block Manager set");
+//                    sendData("send placable manager");
+//                    Game.loadingText = "Getting Building Data...";
+                } else if (data.getClass().equals(short[][].class)) {
                     EIError.debugMsg("Setting Block Manager...");
-                    BlockManager bm = (BlockManager) data;
-                    bm.setTransient(registry);
-                    gameController.setBlockManager(bm);
-                    bm = null;
-                    EIError.debugMsg("Block Manager set");
-                    sendData("send placable manager");
+                    short[][] blockChunk = (short[][]) data;
+                    if (blockChunk.length >= NetworkThread.collumnChunkSize) {
+                        registry.getBlockManager().setBlockCollumns(blockChunk, currentStartCollumn, currentStartCollumn + NetworkThread.collumnChunkSize);
+                        if (currentStartCollumn == 0) {
+                            sendData("send placable manager");
+                        }
+                        currentStartCollumn += NetworkThread.collumnChunkSize;
+                        EIError.debugMsg("Block Manager chunk " + currentStartCollumn + " " + currentStartCollumn + NetworkThread.collumnChunkSize);
+                        output.writeObject("send block manager chunk");
+                        try {
+                            sleep(10);
+                        } catch (InterruptedException ex) {
+                        }
+                    } else {
+                        EIError.debugMsg("Block Manager set");
+                    }
+                    blockChunk = null;
                     Game.loadingText = "Getting Building Data...";
                 } else if (data.getClass().equals(PlaceableManager.class)) {
                     EIError.debugMsg("Setting Placeable Manager...");
@@ -321,7 +377,7 @@ public class NetworkThread extends Thread {
                     EIError.debugMsg("Sending Player Data...");
                     sendData(registry.getPlayerManager().getCurrentPlayer());
                     EIError.debugMsg("Player Data Sent");
-                    
+
                     Game.loadingText = "Here we go!";
 
                     gameController.setLoading(false);
@@ -329,6 +385,16 @@ public class NetworkThread extends Thread {
                     registry.getBlockManager().updateResolution();
                     gameController.setIsInGame(true);
                     readyForUpdates = true;
+
+                    try {
+                        DatagramSocket socket = new DatagramSocket();
+                        clientReceiveThread = new ClientReceiveThread(registry, gameController, socket, ip, 5556);
+                        clientReceiveThread.start();
+
+                        System.out.println("Socket Created");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 } else if (data.getClass().equals(Resource.class)) {
                     Resource r = (Resource) data;
                     EIError.debugMsg("Adding Resource (" + r.getId() + ")...");
@@ -339,8 +405,16 @@ public class NetworkThread extends Thread {
                     AggressiveSnake m = (AggressiveSnake) data;
                     m.setTransient(registry, registry.getMonsterManager());
                     registry.getMonsterManager().registerMonster(m);
+                } else if (data.getClass().equals(BlueThorn.class)) {
+                    BlueThorn m = (BlueThorn) data;
+                    m.setTransient(registry, registry.getMonsterManager());
+                    registry.getMonsterManager().registerMonster(m);
                 } else if (data.getClass().equals(BossOrc.class)) {
                     BossOrc m = (BossOrc) data;
+                    m.setTransient(registry, registry.getMonsterManager());
+                    registry.getMonsterManager().registerMonster(m);
+                } else if (data.getClass().equals(SnailRider.class)) {
+                    SnailRider m = (SnailRider) data;
                     m.setTransient(registry, registry.getMonsterManager());
                     registry.getMonsterManager().registerMonster(m);
                 } else if (data.getClass().equals(LionFly.class)) {
@@ -377,6 +451,10 @@ public class NetworkThread extends Thread {
                     registry.getMonsterManager().registerMonster(m);
                 } else if (data.getClass().equals(SpiderWorm.class)) {
                     SpiderWorm m = (SpiderWorm) data;
+                    m.setTransient(registry, registry.getMonsterManager());
+                    registry.getMonsterManager().registerMonster(m);
+                } else if (data.getClass().equals(VineThorn.class)) {
+                    VineThorn m = (VineThorn) data;
                     m.setTransient(registry, registry.getMonsterManager());
                     registry.getMonsterManager().registerMonster(m);
                 } else if (data.getClass().equals(ZombieWalrus.class)) {
@@ -554,12 +632,15 @@ public class NetworkThread extends Thread {
                     registry.getProjectileManager().processProjectileUpdate(up);
                     EIError.debugMsg("Projectile Updated");
                 }
+
                 data = null;
             }
         } catch (IOException e) {
             EIError.debugMsg("Network IO Error: " + e.getMessage());
         } catch (ClassNotFoundException e) {
             EIError.debugMsg("Network Class Error: " + e.getMessage());
+        } catch (Exception e) {
+            EIError.debugMsg("Network Error: " + e.getMessage());
         }
 
         readyForUpdates = false;

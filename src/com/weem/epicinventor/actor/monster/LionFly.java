@@ -36,6 +36,9 @@ public class LionFly extends Monster {
         dropChances.addDropChance("Fur", 75.0f, 1, 2);
         dropChances.addDropChance("Hair", 25.0f, 1, 2);
         dropChances.addDropChance("Skin", 75.0f, 1, 1);
+        dropChances.addDropChance("WeemsDiceBag", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("ForrestsLaptop", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("BrandonsAbacus", 0.20f, 1, 1); //1 in 500 chance
 
         ai = new AI(registry, this);
         ai.clearGoals();

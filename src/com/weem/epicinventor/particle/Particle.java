@@ -11,10 +11,10 @@ import java.awt.geom.AffineTransform;
 
 public class Particle {
 
-    private ParticleEmitter particleEmitter;
-    private Registry registry;
-    private float mapX;
-    private float mapY;
+    protected ParticleEmitter particleEmitter;
+    protected Registry registry;
+    protected float mapX;
+    protected float mapY;
     public boolean isDirty;
     public float velocityX;
     public float velocityY;
@@ -22,15 +22,15 @@ public class Particle {
     public float angularVelocity;
     public float size;
     public int ttl;
-    private BufferedImage image;
-    private int width;
-    private int height;
-    private boolean friendly;
-    private boolean placeable;
-    private boolean disregardTerrain;
-    private boolean isNew;
-    private int damage;
-    private Actor source;
+    protected BufferedImage image;
+    protected int width;
+    protected int height;
+    protected boolean friendly;
+    protected boolean placeable;
+    protected boolean disregardTerrain;
+    protected boolean isNew;
+    protected int damage;
+    protected Actor source;
 
     public Particle(ParticleEmitter pm, Registry rg, Actor as, String im, int x, int y, float vx, float vy, float a, float av, float s, int t, boolean f, boolean p, boolean dt, int d, boolean vbr) {
         particleEmitter = pm;

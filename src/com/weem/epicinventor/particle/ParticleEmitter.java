@@ -13,20 +13,20 @@ public class ParticleEmitter extends Manager {
 
     int mapX;
     int mapY;
-    private ArrayList<Particle> particles;
-    private ArrayList<String> images;
-    private int particlesPerGeneration = 2;
-    private boolean active;
-    private Point targetPoint;
-    private Actor source;
-    private boolean friendly;
-    private boolean placeable;
-    private boolean disregardTerrain;
-    private int damage;
-    private float speed;
-    private float maxSpread;
-    private int maxDistance;
-    private boolean velocityBasedRotation;
+    protected ArrayList<Particle> particles;
+    protected ArrayList<String> images;
+    protected float particlesPerGeneration = 2;
+    protected boolean active;
+    protected Point targetPoint;
+    protected Actor source;
+    protected boolean friendly;
+    protected boolean placeable;
+    protected boolean disregardTerrain;
+    protected int damage;
+    protected float speed;
+    protected float maxSpread;
+    protected int maxDistance;
+    protected boolean velocityBasedRotation;
 
     public ParticleEmitter(GameController gc, Registry rg, Actor as, int x, int y, ArrayList<String> im, boolean f, boolean p, boolean dt, int d, float sp, float ms, int md) {
         super(gc, rg);
@@ -121,7 +121,7 @@ public class ParticleEmitter extends Manager {
         return angle;
     }
     
-    private Particle generateNewParticle() {
+    protected Particle generateNewParticle() {
         float velocityX = 0;
         float velocityY = 0;
         

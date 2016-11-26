@@ -78,7 +78,7 @@ public class GoalAttackMobs extends Goal {
 
         boolean shouldAttack = false;
         if (actor.getCurrentAttackType() == Actor.AttackType.MELEE) {
-            Arc2D.Double attackArc = actor.getAttackArc(actor.getAttankRange());
+            Arc2D.Double attackArc = actor.getAttackArc(actor.getAttackRange());
             if (attackArc != null) {
                 Rectangle sr = monster.getSpriteRect();
                 if (sr != null) {

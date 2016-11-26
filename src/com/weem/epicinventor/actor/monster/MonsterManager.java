@@ -16,7 +16,7 @@ import java.io.*;
 import java.util.*;
 import java.util.ArrayList;
 
-public class MonsterManager extends Manager implements Serializable {
+public class MonsterManager extends Manager implements Serializable, Cloneable {
 
     protected static final long serialVersionUID = 10000L;
     private HashMap<String, Monster> monsters;
@@ -27,6 +27,7 @@ public class MonsterManager extends Manager implements Serializable {
     private boolean showRect;
     private boolean showGoals;
     transient private long nextBossOrcSpawn = 0;
+    transient private long nextSnailRiderSpawn = 0;
     transient private boolean transmitting;
     transient private Monster selectedMob = null;
 
@@ -41,6 +42,7 @@ public class MonsterManager extends Manager implements Serializable {
         RedOrc,
         RockMonster,
         Snail,
+        SnailRider,
         Snake,
         SpiderWorm,
         ZombieWalrus
@@ -89,6 +91,124 @@ public class MonsterManager extends Manager implements Serializable {
         }
     }
 
+    public void generatePlants() {
+        int passes = 0;
+        int blueThornCount = 0;
+        int vineThornCount = 0;
+
+        do {
+            blueThornCount = this.getCountByType("BlueThorn");
+            vineThornCount = this.getCountByType("VineThorn");
+            spawnPlants();
+
+            Monster monster = null;
+            ArrayList deadMonsters = new ArrayList();
+
+            try {
+                for (String key : monsters.keySet()) {
+                    monster = (Monster) monsters.get(key);
+                    if (monster != null) {
+                        monster.update();
+                        if (monster.getIsDead()) {
+                            deadMonsters.add(key);
+                        }
+                    }
+                }
+
+                if (deadMonsters.size() > 0) {
+                    for (int i = 0; i < deadMonsters.size(); i++) {
+                        //EIError.debugMsg((String) deadMonsters.get(i));
+                        monsters.remove((String) deadMonsters.get(i));
+                    }
+                }
+            } catch (ConcurrentModificationException concEx) {
+                //another thread was trying to modify monsters while iterating
+                //we'll continue and the new item can be grabbed on the next update
+            }
+
+            passes++;
+        } while ((blueThornCount < 200 || vineThornCount < 200) && passes < 50);
+        int g = 1;
+    }
+
+    private void spawnPlants() {
+        if (gameController.multiplayerMode != gameController.multiplayerMode.CLIENT) {
+            //Blue Thorns
+            int blueThornCount = this.getCountByType("BlueThorn");
+            if (blueThornCount < 200) {
+                for (int i = 0; i < 200 - blueThornCount; i++) {
+                    boolean canSpawn = true;
+                    int level = Rand.getRange(1, 3);
+                    Point vinePosition = new Point();
+                    vinePosition.x = Rand.getRange(1, gameController.getMapWidth());
+                    vinePosition.y = Rand.getRange(registry.getBlockManager().getLevelBottom(level),
+                            registry.getBlockManager().getLevelTop(level));
+
+                    vinePosition.y = this.findNextFloor(vinePosition.x, vinePosition.y, 60);
+
+                    if (this.doesRectContainBlocks(vinePosition.x, vinePosition.y + 100, 17, 16)) {
+                        Monster monster = null;
+                        try {
+                            for (String key : monsters.keySet()) {
+                                monster = (Monster) monsters.get(key);
+                                if (monster.getName().equals("BlueThorn") || monster.getName().equals("VineThorn")) {
+                                    double distance = vinePosition.distance(monster.getCenterPoint());
+                                    if (distance < 750) {
+                                        canSpawn = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        } catch (ConcurrentModificationException concEx) {
+                            //another thread was trying to modify monsters while iterating
+                            //we'll continue and the new item can be grabbed on the next update
+                        }
+                        if (canSpawn) {
+                            spawn("BlueThorn", "Roaming", vinePosition.x, vinePosition.y);
+                        }
+                    }
+                }
+            }
+
+            //Vine Thorns
+            int vineThornCount = this.getCountByType("VineThorn");
+            if (vineThornCount < 200) {
+                for (int i = 0; i < 200 - vineThornCount; i++) {
+                    boolean canSpawn = true;
+                    int level = Rand.getRange(1, 3);
+                    Point vinePosition = new Point();
+                    vinePosition.x = Rand.getRange(1, gameController.getMapWidth());
+                    vinePosition.y = Rand.getRange(registry.getBlockManager().getLevelBottom(level),
+                            registry.getBlockManager().getLevelTop(level));
+
+                    vinePosition.y = this.findNextFloor(vinePosition.x, vinePosition.y, 60);
+
+                    if (this.doesRectContainBlocks(vinePosition.x, vinePosition.y + 100, 17, 16)) {
+                        Monster monster = null;
+                        try {
+                            for (String key : monsters.keySet()) {
+                                monster = (Monster) monsters.get(key);
+                                if (monster.getName().equals("BlueThorn") || monster.getName().equals("VineThorn")) {
+                                    double distance = vinePosition.distance(monster.getCenterPoint());
+                                    if (distance < 750) {
+                                        canSpawn = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        } catch (ConcurrentModificationException concEx) {
+                            //another thread was trying to modify monsters while iterating
+                            //we'll continue and the new item can be grabbed on the next update
+                        }
+                        if (canSpawn) {
+                            spawn("VineThorn", "Roaming", vinePosition.x, vinePosition.y);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     public float getShouldSpawn(MonsterType mt, int groundLevel) {
         float[] levelCounts = new float[5];
 
@@ -130,7 +250,7 @@ public class MonsterManager extends Manager implements Serializable {
                 break;
             case RedOrc:
                 levelCounts[0] = 0.0f;
-                levelCounts[1] = 0.5f;
+                levelCounts[1] = 0.5f / 120.0f;
                 levelCounts[2] = 4.5f / 120.0f;
                 levelCounts[3] = 7.5f / 120.0f;
                 levelCounts[4] = 8.5f / 120.0f;
@@ -166,7 +286,7 @@ public class MonsterManager extends Manager implements Serializable {
             case ZombieWalrus:
                 levelCounts[0] = 2.25f / 120.0f;
                 levelCounts[1] = 2.75f / 120.0f;
-                levelCounts[2] = 0.75f;
+                levelCounts[2] = 0.75f / 120.0f;
                 levelCounts[3] = 0.0f;
                 levelCounts[4] = 0.0f;
                 break;
@@ -193,7 +313,7 @@ public class MonsterManager extends Manager implements Serializable {
         return selectedMob;
     }
 
-    public boolean handleClick(Point clickPoint) {
+    public boolean handleClick(Player p, Point clickPoint) {
         Point mousePos = new Point(this.panelToMapX(clickPoint.x), this.panelToMapY(clickPoint.y));
 
         Monster monster = null;
@@ -227,7 +347,15 @@ public class MonsterManager extends Manager implements Serializable {
             monster = new AggressiveSnake(this, registry, "Monsters/AggressiveSnake/Standing", spawnType, x, y, mobSpawnRangeMin, mobSpawnRangeMax);
             registerMonster(monster);
             if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
+                    registry.getNetworkThread().sendData(monster);
+                }
+            }
+        } else if (type.toLowerCase().equals("bluethorn")) {
+            monster = new BlueThorn(this, registry, "Monsters/BlueThorn/BlueThorn1", spawnType, x, y, mobSpawnRangeMin, mobSpawnRangeMax);
+            registerMonster(monster);
+            if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     registry.getNetworkThread().sendData(monster);
                 }
             }
@@ -235,7 +363,15 @@ public class MonsterManager extends Manager implements Serializable {
             monster = new BossOrc(this, registry, "Monsters/BossOrc/Standing", spawnType, x, y, mobSpawnRangeMin, mobSpawnRangeMax);
             registerMonster(monster);
             if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
+                    registry.getNetworkThread().sendData(monster);
+                }
+            }
+        } else if (type.toLowerCase().equals("snailrider")) {
+            monster = new SnailRider(this, registry, "Monsters/SnailRider/Standing", spawnType, x, y, mobSpawnRangeMin, mobSpawnRangeMax);
+            registerMonster(monster);
+            if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     registry.getNetworkThread().sendData(monster);
                 }
             }
@@ -243,7 +379,7 @@ public class MonsterManager extends Manager implements Serializable {
             monster = new LionFly(this, registry, "Monsters/LionFly/Standing", spawnType, x, y, mobSpawnRangeMin, mobSpawnRangeMax);
             registerMonster(monster);
             if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     registry.getNetworkThread().sendData(monster);
                 }
             }
@@ -251,7 +387,7 @@ public class MonsterManager extends Manager implements Serializable {
             monster = new Orc(this, registry, "Monsters/Orc/Standing", spawnType, x, y, mobSpawnRangeMin, mobSpawnRangeMax);
             registerMonster(monster);
             if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     registry.getNetworkThread().sendData(monster);
                 }
             }
@@ -259,7 +395,7 @@ public class MonsterManager extends Manager implements Serializable {
             monster = new Pig(this, registry, "Monsters/Pig/Standing", spawnType, x, y, mobSpawnRangeMin, mobSpawnRangeMax);
             registerMonster(monster);
             if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     registry.getNetworkThread().sendData(monster);
                 }
             }
@@ -267,7 +403,7 @@ public class MonsterManager extends Manager implements Serializable {
             monster = new Porcupine(this, registry, "Monsters/Porcupine/Standing", spawnType, x, y, mobSpawnRangeMin, mobSpawnRangeMax);
             registerMonster(monster);
             if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     registry.getNetworkThread().sendData(monster);
                 }
             }
@@ -275,7 +411,7 @@ public class MonsterManager extends Manager implements Serializable {
             monster = new RedOrc(this, registry, "Monsters/RedOrc/Standing", spawnType, x, y, mobSpawnRangeMin, mobSpawnRangeMax);
             registerMonster(monster);
             if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     registry.getNetworkThread().sendData(monster);
                 }
             }
@@ -283,7 +419,7 @@ public class MonsterManager extends Manager implements Serializable {
             monster = new RockMonster(this, registry, "Monsters/RockMonster/Standing", spawnType, x, y, mobSpawnRangeMin, mobSpawnRangeMax);
             registerMonster(monster);
             if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     registry.getNetworkThread().sendData(monster);
                 }
             }
@@ -291,7 +427,7 @@ public class MonsterManager extends Manager implements Serializable {
             monster = new Snail(this, registry, "Monsters/Snail/Standing", spawnType, x, y, mobSpawnRangeMin, mobSpawnRangeMax);
             registerMonster(monster);
             if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     registry.getNetworkThread().sendData(monster);
                 }
             }
@@ -299,7 +435,7 @@ public class MonsterManager extends Manager implements Serializable {
             monster = new Snake(this, registry, "Monsters/Snake/Standing", spawnType, x, y, mobSpawnRangeMin, mobSpawnRangeMax);
             registerMonster(monster);
             if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     registry.getNetworkThread().sendData(monster);
                 }
             }
@@ -307,7 +443,15 @@ public class MonsterManager extends Manager implements Serializable {
             monster = new SpiderWorm(this, registry, "Monsters/SpiderWorm/Standing", spawnType, x, y, mobSpawnRangeMin, mobSpawnRangeMax);
             registerMonster(monster);
             if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
+                    registry.getNetworkThread().sendData(monster);
+                }
+            }
+        } else if (type.toLowerCase().equals("vinethorn")) {
+            monster = new VineThorn(this, registry, "Monsters/VineThorn/VineThorn1", spawnType, x, y, mobSpawnRangeMin, mobSpawnRangeMax);
+            registerMonster(monster);
+            if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     registry.getNetworkThread().sendData(monster);
                 }
             }
@@ -315,7 +459,7 @@ public class MonsterManager extends Manager implements Serializable {
             monster = new ZombieWalrus(this, registry, "Monsters/ZombieWalrus/Standing", spawnType, x, y, mobSpawnRangeMin, mobSpawnRangeMax);
             registerMonster(monster);
             if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     registry.getNetworkThread().sendData(monster);
                 }
             }
@@ -329,14 +473,14 @@ public class MonsterManager extends Manager implements Serializable {
         gameController.dropLoot(m, x, y, drops);
     }
 
-    public Damage getMonsterTouchDamage(Rectangle r) {
+    public Damage getMonsterTouchDamage(Rectangle r, int x) {
         Damage damage = null;
         Monster monster = null;
 
         try {
             for (String key : monsters.keySet()) {
                 monster = (Monster) monsters.get(key);
-                damage = monster.getMonsterTouchDamage(r);
+                damage = monster.getMonsterTouchDamage(r, x);
 
                 if (damage != null) {
                     break;
@@ -488,9 +632,11 @@ public class MonsterManager extends Manager implements Serializable {
             try {
                 for (String key : monsters.keySet()) {
                     monster = (Monster) monsters.get(key);
-                    monster.update();
-                    if (monster.getIsDead()) {
-                        deadMonsters.add(key);
+                    if (monster != null) {
+                        monster.update();
+                        if (monster.getIsDead()) {
+                            deadMonsters.add(key);
+                        }
                     }
                 }
 
@@ -555,6 +701,41 @@ public class MonsterManager extends Manager implements Serializable {
         return count;
     }
 
+    public void removeAllMonsters(Rectangle area) {
+        Monster monster = null;
+
+        ArrayList deadMonsters = new ArrayList();
+
+        try {
+            for (String key : monsters.keySet()) {
+                monster = (Monster) monsters.get(key);
+                if (monster != null) {
+                    if (!monster.getName().equals("Pig") && !monster.getName().equals("BlueThorn") && !monster.getName().equals("VineThorn") && monster.getPerimeter().intersects(area)) {
+                        deadMonsters.add(key);
+                        if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
+                            if (registry.getNetworkThread().readyForUpdates()) {
+                                UpdateMonster um = new UpdateMonster(monster.getId());
+                                um.mapX = monster.getMapX();
+                                um.mapY = monster.getMapY();
+                                um.action = "Die";
+                                registry.getNetworkThread().sendData(um);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (deadMonsters.size() > 0) {
+                for (int i = 0; i < deadMonsters.size(); i++) {
+                    monsters.remove((String) deadMonsters.get(i));
+                }
+            }
+        } catch (ConcurrentModificationException concEx) {
+            //another thread was trying to modify monsters while iterating
+            //we'll continue and the new item can be grabbed on the next update
+        }
+    }
+
     public void removeAllMonsters() {
         Monster monster = null;
 
@@ -563,8 +744,17 @@ public class MonsterManager extends Manager implements Serializable {
         try {
             for (String key : monsters.keySet()) {
                 monster = (Monster) monsters.get(key);
-                if (!monster.getName().equals("Pig")) {
+                if (!monster.getName().equals("Pig") && !monster.getName().equals("BlueThorn") && !monster.getName().equals("VineThorn")) {
                     deadMonsters.add(key);
+                    if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
+                        if (registry.getNetworkThread().readyForUpdates()) {
+                            UpdateMonster um = new UpdateMonster(monster.getId());
+                            um.mapX = monster.getMapX();
+                            um.mapY = monster.getMapY();
+                            um.action = "Die";
+                            registry.getNetworkThread().sendData(um);
+                        }
+                    }
                 }
             }
 
@@ -647,6 +837,15 @@ public class MonsterManager extends Manager implements Serializable {
         return false;
     }
 
+    public boolean spawnSnailRider(Player player) {
+        if (getSpawnCount("SnailRider") < 1) {
+            registry.showMessage("Success", "Suddenly, a wild Snail Rider appears!");
+            spawn("SnailRider", "Roaming", player.getMapX(), player.getMapY());
+            return true;
+        }
+        return false;
+    }
+
     public void spawnNearPlayers() {
         Monster monster = null;
         float prob, rand;
@@ -677,13 +876,18 @@ public class MonsterManager extends Manager implements Serializable {
                 int y = player.getMapY();
                 int groundLevel = registry.getBlockManager().getLevelByY(y);
                 count = -groundLevel;
-                for (String key2 : monsters.keySet()) {
-                    monster = (Monster) monsters.get(key2);
-                    if (monster.getCenterPoint().distance(player.getCenterPoint()) < MonsterManager.mobSpawnRangeMax * 3 / 2) {
-                        if (monster.getTouchDamage() > 0) {
-                            count++;
+                try {
+                    for (String key2 : monsters.keySet()) {
+                        monster = (Monster) monsters.get(key2);
+                        if (monster.getCenterPoint().distance(player.getCenterPoint()) < MonsterManager.mobSpawnRangeMax * 3 / 2) {
+                            if (monster.getTouchDamage() > 0 && !monster.getName().equals("BlueThorn") && !monster.getName().equals("VineThorn")) {
+                                count++;
+                            }
                         }
                     }
+                } catch (ConcurrentModificationException concEx) {
+                    //another thread was trying to modify monsters while iterating
+                    //we'll continue and the new item can be grabbed on the next update
                 }
                 if (count < 4) {
                     for (MonsterType monsterType : MonsterType.values()) {
@@ -698,6 +902,7 @@ public class MonsterManager extends Manager implements Serializable {
                                 }
                             }
                             if (rand <= prob) {
+                                //System.out.println("spawn near player " + monsterType.name());
                                 spawn(monsterType.name(), "Roaming", x, y);
                                 count++;
                             }
@@ -729,11 +934,13 @@ public class MonsterManager extends Manager implements Serializable {
             }
             if (!playerNear) {
                 for (MonsterType monsterType : MonsterType.values()) {
-                    rand = Rand.getFloat();
-                    prob = getShouldSpawn(monsterType, 0);
-                    if (rand <= prob / 3.0f) {
-                        EIError.debugMsg("spawn near placeable " + monsterType.name());
-                        spawn(monsterType.name(), "Roaming", p.x, p.y);
+                    if (monsterType.toString().equals("Porcupine") || monsterType.toString().equals("Snail") || monsterType.toString().equals("Snake") || monsterType.toString().equals("ZombieWalrus")) {
+                        rand = Rand.getFloat();
+                        prob = getShouldSpawn(monsterType, 0);
+                        if (rand <= prob / 3.0f) {
+                            //System.out.println("spawn near placeable " + monsterType.name());
+                            spawn(monsterType.name(), "Roaming", p.x, p.y);
+                        }
                     }
                 }
             }
@@ -744,12 +951,20 @@ public class MonsterManager extends Manager implements Serializable {
         nextBossOrcSpawn = s;
     }
 
+    public void setNextSnailRiderSpawn(int s) {
+        nextSnailRiderSpawn = s;
+    }
+
     @Override
     public void updateLong() {
         if (!transmitting) {
             if (nextBossOrcSpawn == 0) {
                 //spawn melvin every 10 - 30 min
                 nextBossOrcSpawn = registry.currentTime + Rand.getRange(10 * 60 * 1000, 30 * 60 * 1000);
+            }
+            if (nextSnailRiderSpawn == 0) {
+                //spawn melvin every 10 - 30 min
+                nextSnailRiderSpawn = registry.currentTime + Rand.getRange(10 * 60 * 1000, 30 * 60 * 1000);
             }
 
             Monster monster = null;
@@ -840,6 +1055,10 @@ public class MonsterManager extends Manager implements Serializable {
         }
     }
 
+    public HashMap<String, Monster> getMonsters() {
+        return monsters;
+    }
+
     public Monster getClosestInPanel(Point p) {
         Monster monster = null;
         Monster closestMonster = null;
@@ -849,7 +1068,7 @@ public class MonsterManager extends Manager implements Serializable {
         try {
             for (String key : monsters.keySet()) {
                 monster = (Monster) monsters.get(key);
-                if (!monster.getName().equals("Pig")) {
+                if (!monster.getName().equals("Pig") && !monster.getName().equals("BlueThorn") && !monster.getName().equals("VineThorn")) {
                     if (monster.getIsInPanel()) {
                         double distance = p.distance(monster.getCenterPoint());
                         if (distance < closestDistance || closestDistance == 0) {
@@ -876,7 +1095,7 @@ public class MonsterManager extends Manager implements Serializable {
         try {
             for (String key : monsters.keySet()) {
                 monster = (Monster) monsters.get(key);
-                if (!monster.getName().equals("Pig")) {
+                if (!monster.getName().equals("Pig") && !monster.getName().equals("BlueThorn") && !monster.getName().equals("VineThorn")) {
                     if (monster.getIsInPanel()) {
                         double distance = p.distance(monster.getCenterPoint());
                         if ((distance < closestDistance || closestDistance == 0) && distance <= r) {
@@ -903,11 +1122,13 @@ public class MonsterManager extends Manager implements Serializable {
         try {
             for (String key : monsters.keySet()) {
                 monster = (Monster) monsters.get(key);
-                if (monster.getIsInPanel()) {
-                    double distance = p.distance(monster.getCenterPoint());
-                    if (monster.getPlayerDamage() > mostAggro) {
-                        mostAggroMonster = monster;
-                        mostAggro = monster.getPlayerDamage();
+                if (!monster.getName().equals("Pig") && !monster.getName().equals("BlueThorn") && !monster.getName().equals("VineThorn")) {
+                    if (monster.getIsInPanel()) {
+                        double distance = p.distance(monster.getCenterPoint());
+                        if (monster.getPlayerDamage() > mostAggro) {
+                            mostAggroMonster = monster;
+                            mostAggro = monster.getPlayerDamage();
+                        }
                     }
                 }
             }
@@ -917,6 +1138,17 @@ public class MonsterManager extends Manager implements Serializable {
         }
 
         return mostAggroMonster;
+    }
+
+    public void processMonsterUpdateUDP(UDPMonster up) {
+        if (up != null) {
+            if (monsters.containsKey(up.id)) {
+                Monster monster = monsters.get(up.id);
+                if (monster != null) {
+                    monster.processUpdate(up);
+                }
+            }
+        }
     }
 
     public void processMonsterUpdate(UpdateMonster um) {
@@ -936,6 +1168,8 @@ public class MonsterManager extends Manager implements Serializable {
                         monster.applyDamage(um.dataInt, um.actor);
                     } else if (um.action.equals("ApplyKnockBack")) {
                         monster.applyKnockBack(um.dataInt, um.dataInt2);
+                    } else if (um.action.equals("Die")) {
+                        monster.setHitPoints(0);
                     } else if (um.action.equals("Fear")) {
                         monster.applyKnockBack(um.dataInt, um.dataInt2);
                         monster.fear(um.dataPoint, um.dataLong);
@@ -943,7 +1177,7 @@ public class MonsterManager extends Manager implements Serializable {
                 }
             } else {
                 if (gameController.multiplayerMode == gameController.multiplayerMode.CLIENT && registry.getNetworkThread() != null) {
-                    if (registry.getNetworkThread().readyForUpdates) {
+                    if (registry.getNetworkThread().readyForUpdates()) {
                         EIError.debugMsg("Monster not found - need " + um.id);
                         registry.getNetworkThread().sendData("send monster data: " + um.id);
                     }
@@ -960,5 +1194,15 @@ public class MonsterManager extends Manager implements Serializable {
         transmitting = true;
         aOutputStream.defaultWriteObject();
         transmitting = false;
+    }
+
+    @Override
+    public Object clone() {
+        Object ret = null;
+        try {
+            ret = super.clone();
+        } catch (CloneNotSupportedException e) {
+        }
+        return ret;
     }
 }

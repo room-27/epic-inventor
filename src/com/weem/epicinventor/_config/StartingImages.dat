@@ -31,6 +31,7 @@ o HUD/ScreenMain/NewVersion.png
 o HUD/ScreenMultiPlayer/BG.jpg
 o HUD/ScreenMultiPlayer/ButtonBack.png
 o HUD/ScreenMultiPlayer/ButtonHost.png
+o HUD/ScreenMultiPlayer/ButtonInstructions.png
 o HUD/ScreenMultiPlayer/ButtonJoin.png
 o HUD/ScreenMultiPlayerHost/BG.jpg
 o HUD/ScreenMultiPlayerHost/BGText.png
@@ -93,3 +94,79 @@ o Background/Mountain1.png
 o Background/Mountain2.png
 o Background/Tree1.png
 o Background/Tree2.png
+
+//Placeables - Placed
+o Placeables/Placed/AutoXBow.png
+s Placeables/Placed/BladeTrap.png 8
+o Placeables/Placed/BookShelf.png
+o Placeables/Placed/Box.png
+o Placeables/Placed/Cabin.png
+o Placeables/Placed/Chest.png
+o Placeables/Placed/CopperMine.png
+o Placeables/Placed/Crate.png
+o Placeables/Placed/Container.png
+s Placeables/Placed/EmeraldTeleporter.png 10
+s Placeables/Placed/Forge.png 7
+o Placeables/Placed/GoldMine.png
+o Placeables/Placed/IronMine.png
+o Placeables/Placed/LargeFarm.png
+o Placeables/Placed/LargeSafe.png
+o Placeables/Placed/LionFlyStatue.png
+o Placeables/Placed/ItemContainer.png
+o Placeables/Placed/MedicKit.png
+o Placeables/Placed/MediumSafe.png
+o Placeables/Placed/Pasture.png
+o Placeables/Placed/PlatinumMine.png
+o Placeables/Placed/PottedFlower.png
+s Placeables/Placed/RubyTeleporter.png 10
+s Placeables/Placed/SapphireTeleporter.png 10
+s Placeables/Placed/SawMill.png 6
+o Placeables/Placed/ScareCrow.png
+o Placeables/Placed/SilverMine.png
+o Placeables/Placed/SmallFarm.png
+o Placeables/Placed/SmallSafe.png
+s Placeables/Placed/SteamEngine.png 6
+o Placeables/Placed/StoneMine.png
+o Placeables/Placed/ThornTrap.png
+s Placeables/Placed/TownHall.png 5
+o Placeables/Placed/WeaponRack.png
+s Placeables/Placed/WindMill.png 4
+o Placeables/Placed/WorkBench.png
+
+//Placeables - Cursors
+o Placeables/Cursor/AutoXBow Placeables/Cursor/AutoXBow.png 1.0 -1 -1 -1
+o Placeables/Cursor/BladeTrap Placeables/Cursor/BladeTrap.png 1.0 -1 -1 -1
+o Placeables/Cursor/BookShelf Placeables/Cursor/BookShelf.png 1.0 -1 -1 -1
+o Placeables/Cursor/Box Placeables/Cursor/Box.png 1.0 -1 -1 -1
+o Placeables/Cursor/Cabin Placeables/Cursor/Cabin.png 1.0 -1 -1 -1
+o Placeables/Cursor/Chest Placeables/Cursor/Chest.png 1.0 -1 -1 -1
+o Placeables/Cursor/CopperMine Placeables/Cursor/CopperMine.png 1.0 -1 -1 -1
+o Placeables/Cursor/Crate Placeables/Cursor/Crate.png 1.0 -1 -1 -1
+o Placeables/Cursor/Container Placeables/Cursor/ItemContainer.png 1.0 -1 -1 -1
+o Placeables/Cursor/EmeraldTeleporter Placeables/Cursor/EmeraldTeleporter.png 1.0 -1 -1 -1
+o Placeables/Cursor/Forge Placeables/Cursor/Forge.png 1.0 -1 -1 -1
+o Placeables/Cursor/GoldMine Placeables/Cursor/GoldMine.png 1.0 -1 -1 -1
+o Placeables/Cursor/IronMine Placeables/Cursor/IronMine.png 1.0 -1 -1 -1
+o Placeables/Cursor/LargeFarm Placeables/Cursor/LargeFarm.png 1.0 -1 -1 -1
+o Placeables/Cursor/LargeSafe Placeables/Cursor/LargeSafe.png 1.0 -1 -1 -1
+o Placeables/Cursor/LionFlyStatue Placeables/Cursor/LionFlyStatue.png 1.0 -1 -1 -1
+o Placeables/Cursor/MedicKit Placeables/Cursor/MedicKit.png 1.0 -1 -1 -1
+o Placeables/Cursor/MediumSafe Placeables/Cursor/MediumSafe.png 1.0 -1 -1 -1
+o Placeables/Cursor/Pasture Placeables/Cursor/Pasture.png 1.0 -1 -1 -1
+o Placeables/Cursor/PlatinumMine Placeables/Cursor/PlatinumMine.png 1.0 -1 -1 -1
+o Placeables/Cursor/PottedFlower Placeables/Cursor/PottedFlower.png 1.0 -1 -1 -1
+o Placeables/Cursor/RubyTeleporter Placeables/Cursor/RubyTeleporter.png 1.0 -1 -1 -1
+o Placeables/Cursor/SapphireTeleporter Placeables/Cursor/SapphireTeleporter.png 1.0 -1 -1 -1
+o Placeables/Cursor/ScareCrow Placeables/Cursor/ScareCrow.png 1.0 -1 -1 -1
+o Placeables/Cursor/SawMill Placeables/Cursor/SawMill.png 1.0 -1 -1 -1
+o Placeables/Cursor/SilverMine Placeables/Cursor/SilverMine.png 1.0 -1 -1 -1
+o Placeables/Cursor/SmallFarm Placeables/Cursor/SmallFarm.png 1.0 -1 -1 -1
+o Placeables/Cursor/SmallSafe Placeables/Cursor/SmallSafe.png 1.0 -1 -1 -1
+o Placeables/Cursor/SteamEngine Placeables/Cursor/SteamEngine.png 1.0 -1 -1 -1
+o Placeables/Cursor/StoneMine Placeables/Cursor/StoneMine.png 1.0 -1 -1 -1
+o Placeables/Cursor/ThornTrap Placeables/Cursor/ThornTrap.png 1.0 -1 -1 -1
+o Placeables/Cursor/TownBlock Placeables/Cursor/TownBlock.png 1.0 -1 -1 -1
+o Placeables/Cursor/TownHall Placeables/Cursor/TownHall.png 1.0 -1 -1 -1
+o Placeables/Cursor/WeaponRack Placeables/Cursor/WeaponRack.png 1.0 -1 -1 -1
+o Placeables/Cursor/WindMill Placeables/Cursor/WindMill.png 1.0 -1 -1 -1
+o Placeables/Cursor/WorkBench Placeables/Cursor/WorkBench.png 1.0 -1 -1 -1

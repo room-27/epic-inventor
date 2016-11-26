@@ -131,8 +131,8 @@ public class HUDQuickBar extends HUD {
         //buttons
         hudArea = addArea(BUTTON_INVENTORY_X, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, "button_inventory");
         hudArea.setImage("HUD/QuickBar/ButtonInventory");
-        hudArea = addArea(BUTTON_REPORT_BUGS_X, BUTTON_Y, BUTTON_REPORT_BUGS_WIDTH, BUTTON_HEIGHT, "button_report_bugs");
-        hudArea.setImage("HUD/QuickBar/ButtonReportBugs");
+        /*hudArea = addArea(BUTTON_REPORT_BUGS_X, BUTTON_Y, BUTTON_REPORT_BUGS_WIDTH, BUTTON_HEIGHT, "button_report_bugs");
+        hudArea.setImage("HUD/QuickBar/ButtonReportBugs");*/
         hudArea = addArea(BUTTON_PAUSE_X, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, "button_pause");
         hudArea.setImage("HUD/QuickBar/ButtonPause");
         hudArea = addArea(BUTTON_HELP_X, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, "button_help");
@@ -174,7 +174,7 @@ public class HUDQuickBar extends HUD {
         hudArea = addArea(VERSION_X, VERSION_Y, VERSION_WIDTH, VERSION_HEIGHT, "version");
         hudArea.setFont("SansSerif", Font.BOLD, 12);
         hudArea.setTextXY(STATUS_TEXT_X, STATUS_TEXT_Y);
-        hudArea.setText("Beta Version: " + Game.VERSION);
+        hudArea.setText("Version: " + Game.VERSION);
 
         //power
         hudArea = addArea(POWER_TEXT_X, POWER_TEXT_Y, 1, 1, "power");
@@ -585,14 +585,14 @@ public class HUDQuickBar extends HUD {
                     } else if (hudArea.getType().equals("button_inventory")) {
                         SoundClip cl = new SoundClip("Misc/Click");
                         hudManager.toggleMasterHUD();
-                    } else if (hudArea.getType().equals("button_report_bugs")) {
+                    /*} else if (hudArea.getType().equals("button_report_bugs")) {
                         SoundClip cl = new SoundClip("Misc/Click");
-                        String url = "http://epicinventor.com/forum/index.php?board=9.0";
+                        String url = "http://bugs.epicinventor.com";
 
                         try {
                             Desktop.getDesktop().browse(java.net.URI.create(url));
                         } catch (Exception e) {
-                        }
+                        }*/
                     } else if (hudArea.getType().equals("button_help")) {
                         SoundClip cl = new SoundClip("Misc/Click");
                         hudManager.pauseMasterGame();
@@ -703,10 +703,11 @@ public class HUDQuickBar extends HUD {
                                 if (itemContainer != null) {
                                     String itemName = itemContainer.getInventory().getNameFromSlot(selectedStart);
                                     int qty = itemContainer.getInventory().getQtyFromSlot(selectedStart);
+                                    int level = itemContainer.getInventory().getLevelFromSlot(selectedStart);
 
                                     if (!itemName.isEmpty() && qty > 0) {
                                         int oldQty = qty;
-                                        if (hudManager.playerAddItem(playerInventorySlot, itemName, qty) < oldQty) {
+                                        if (hudManager.playerAddItem(playerInventorySlot, itemName, qty, level) < oldQty) {
                                             itemContainer.deleteInventory(selectedStart, 0);
                                         }
                                     }
@@ -716,10 +717,11 @@ public class HUDQuickBar extends HUD {
                                 if (playerContainer != null) {
                                     String itemName = playerContainer.getInventory().getNameFromSlot(selectedStart);
                                     int qty = playerContainer.getInventory().getQtyFromSlot(selectedStart);
+                                    int level = playerContainer.getInventory().getLevelFromSlot(selectedStart);
 
                                     if (!itemName.isEmpty() && qty > 0) {
                                         int oldQty = qty;
-                                        if (hudManager.playerAddItem(playerInventorySlot, itemName, qty) < oldQty) {
+                                        if (hudManager.playerAddItem(playerInventorySlot, itemName, qty, level) < oldQty) {
                                             playerContainer.deleteInventory(selectedStart, 0);
                                         }
                                     }
@@ -729,10 +731,11 @@ public class HUDQuickBar extends HUD {
                                 if (farm != null) {
                                     String itemName = farm.getInventory().getNameFromSlot(selectedStart);
                                     int qty = farm.getInventory().getQtyFromSlot(selectedStart);
+                                    int level = farm.getInventory().getLevelFromSlot(selectedStart);
 
                                     if (!itemName.isEmpty() && qty > 0) {
                                         int oldQty = qty;
-                                        if (hudManager.playerAddItem(playerInventorySlot, itemName, qty) < oldQty) {
+                                        if (hudManager.playerAddItem(playerInventorySlot, itemName, qty, level) < oldQty) {
                                             farm.deleteInventory(selectedStart, 0);
                                         }
                                     }

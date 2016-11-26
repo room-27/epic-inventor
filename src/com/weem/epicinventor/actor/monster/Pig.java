@@ -20,7 +20,7 @@ public class Pig extends Monster {
         displayName = "Pig";
 
         monsterManager = mm;
-        
+
         difficultyFactor = 0.10f;
 
         adjustHPForLevel();
@@ -47,14 +47,14 @@ public class Pig extends Monster {
     @Override
     public void fear(Point p, long d) {
         super.fear(p, d);
-        
+
         xMoveSize = 6;
     }
 
     @Override
     public void unfear() {
         super.unfear();
-        
+
         xMoveSize = 1;
     }
 
@@ -79,17 +79,15 @@ public class Pig extends Monster {
 
         return ret;
     }
-    
+
     @Override
-
-
     public int attackDamageAndKnockBack(Actor source, Arc2D.Double arc, Point mapPoint, int damage, int kbX, int kbY, String weaponType) {
         int damageTaken = 0;
         if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
             //System.out.println(spriteRect.intersects(r) + ":" + hitPoints);
             if (arc.intersects(spriteRect) && hitPoints > 0) {
-                if(weaponType != null) {
-                    if(weaponType.equals("Net")) {
+                if (weaponType != null) {
+                    if (weaponType.equals("Net")) {
                         this.isDead = true;
                     }
                 }
@@ -133,15 +131,17 @@ public class Pig extends Monster {
     public void update() {
         super.update();
 
-        PlaceableManager pm = registry.getPlaceableManager();
-        if(pm != null) {
-            Placeable p = pm.getPasture(this.getPerimeter());
-            if(p != null) {
-                if(mapX < p.getMapX()) {
-                    mapX = p.getMapX();
-                }
-                if(mapX > p.getMapX() + p.getWidth() - this.width) {
-                    mapX = p.getMapX() + p.getWidth() - this.width;
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            PlaceableManager pm = registry.getPlaceableManager();
+            if (pm != null) {
+                Placeable p = pm.getPasture(this.getPerimeter());
+                if (p != null) {
+                    if (mapX < p.getMapX()) {
+                        mapX = p.getMapX();
+                    }
+                    if (mapX > p.getMapX() + p.getWidth() - this.width) {
+                        mapX = p.getMapX() + p.getWidth() - this.width;
+                    }
                 }
             }
         }

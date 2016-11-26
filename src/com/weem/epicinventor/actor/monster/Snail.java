@@ -21,7 +21,7 @@ public class Snail extends Monster {
         displayName = "Snail";
 
         monsterManager = mm;
-        
+
         difficultyFactor = 0.60f;
 
         adjustHPForLevel();
@@ -38,6 +38,9 @@ public class Snail extends Monster {
         adjustTouchDamageForLevel();
 
         dropChances.addDropChance("LargeShell", 75.0f, 1, 1);
+        dropChances.addDropChance("WeemsDiceBag", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("ForrestsLaptop", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("BrandonsAbacus", 0.20f, 1, 1); //1 in 500 chance
 
         ai = new AI(registry, this);
         ai.clearGoals();
@@ -57,7 +60,6 @@ public class Snail extends Monster {
     public void shoot(Point targetPoint) {
         if (actionMode != ActionMode.ATTACKING) {
             actionMode = ActionMode.ATTACKING;
-            stateChanged = true;
         }
         if (canFire) {
             registry.getProjectileManager().createProjectile(this,
@@ -88,25 +90,21 @@ public class Snail extends Monster {
 
     @Override
     protected void updateImage() {
-        if (stateChanged) {
-            if (vertMoveMode == VertMoveMode.JUMPING) {
-                setImage("Monsters/" + name + "/Jumping");
-            } else if (vertMoveMode == VertMoveMode.FLYING) {
-                loopImage("Monsters/" + name + "/Flapping");
-            } else if (vertMoveMode == VertMoveMode.FALLING) {
-                loopImage("Monsters/" + name + "/Falling");
+        if (vertMoveMode == VertMoveMode.JUMPING) {
+            setImage("Monsters/" + name + "/Jumping");
+        } else if (vertMoveMode == VertMoveMode.FLYING) {
+            loopImage("Monsters/" + name + "/Flapping");
+        } else if (vertMoveMode == VertMoveMode.FALLING) {
+            loopImage("Monsters/" + name + "/Falling");
+        } else {
+            if (actionMode == ActionMode.ATTACKING) {
+                setImage("Monsters/" + name + "/RangeAttacking");
+                //loopImage("Monsters/" + name + "/RangeAttacking", 0.50);
+            } else if (isStill) {
+                setImage("Monsters/" + name + "/Standing");
             } else {
-                if (actionMode == ActionMode.ATTACKING) {
-                    setImage("Monsters/" + name + "/RangeAttacking");
-                    //loopImage("Monsters/" + name + "/RangeAttacking", 0.50);
-                } else if (isStill) {
-                    setImage("Monsters/" + name + "/Standing");
-                } else {
-                    loopImage("Monsters/" + name + "/Walking");
-                }
+                loopImage("Monsters/" + name + "/Walking");
             }
-
-            stateChanged = false;
         }
     }
 }

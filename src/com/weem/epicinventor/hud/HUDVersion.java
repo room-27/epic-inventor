@@ -40,7 +40,7 @@ public class HUDVersion extends HUD {
             hudArea = hudAreas.get(i);
             if (hudArea == ha) {
                 if (hudArea.getType().equals("submit")) {
-                    String url = "http://epicinventor.com/forum/index.php?board=8.0";
+                    String url = "http://forums.epicinventor.com/index.php?board=8.0";
 
                     try {
                         Desktop.getDesktop().browse(java.net.URI.create(url));

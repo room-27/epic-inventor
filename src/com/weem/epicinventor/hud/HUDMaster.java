@@ -257,7 +257,8 @@ public class HUDMaster extends HUD {
         shouldRender = false;
     }
 
-    private void LoadMatchingItems() {
+    @Override
+    public void LoadMatchingItems() {
         synchronized (this) {
             //update matching items in crafting window
             String category = "";
@@ -645,21 +646,31 @@ public class HUDMaster extends HUD {
                                 boolean doLoad = false;
                                 if (it.getCategory().equals("Placeable")) {
                                     isButtonPlaceablesEnabled = true;
+                                    isButtonItemsEnabled = false;
+                                    isButtonAttachmentsEnabled = false;
+
                                     isButtonPDevelopmentEnabled = true;
                                     isButtonPCombatEnabled = true;
                                     isButtonPOtherEnabled = true;
                                     doLoad = true;
                                 } else if (it.getCategory().equals("Item")) {
+                                    isButtonPlaceablesEnabled = false;
                                     isButtonItemsEnabled = true;
+                                    isButtonAttachmentsEnabled = false;
+
                                     isButtonIWeaponsEnabled = true;
                                     isButtonIArmorEnabled = true;
                                     isButtonIOtherEnabled = true;
                                     doLoad = true;
                                 } else if (it.getCategory().equals("Attachment")) {
+                                    isButtonPlaceablesEnabled = false;
+                                    isButtonItemsEnabled = false;
                                     isButtonAttachmentsEnabled = true;
+
                                     isButtonTDevelopmentEnabled = true;
                                     doLoad = true;
                                 }
+                                UpdateButtons();
                                 if (doLoad) {
                                     LoadMatchingItems();
                                     for (int x = 0; x < matchingItems.size(); x++) {
@@ -797,29 +808,31 @@ public class HUDMaster extends HUD {
                 hudArea = hudAreas.get(i);
                 if (hudArea == ha) {
                     int maxQty = registry.getPlaverInventorySlotQty(i);
-                    if (selectedStart == i && registry.getSplitCount() > 0) {
-                        if (maxQty > registry.getSplitCount()) {
+                    if (maxQty > 1) {
+                        if (selectedStart == i && registry.getSplitCount() > 0) {
+                            if (maxQty > registry.getSplitCount()) {
+                                if (shiftKeyPressed) {
+                                    registry.setSplitCount(registry.getSplitCount() + 10);
+                                } else {
+                                    registry.setSplitCount(registry.getSplitCount() + 1);
+                                }
+                                if (registry.getSplitCount() > maxQty) {
+                                    registry.setSplitCount(maxQty);
+                                }
+                                hudManager.setCursorImageAndText(hudArea.getFGImage(), Integer.toString(registry.getSplitCount()));
+                            }
+                        } else {
+                            selectedStart = i;
                             if (shiftKeyPressed) {
-                                registry.setSplitCount(registry.getSplitCount() + 10);
+                                registry.setSplitCount(10);
                             } else {
-                                registry.setSplitCount(registry.getSplitCount() + 1);
+                                registry.setSplitCount(1);
                             }
                             if (registry.getSplitCount() > maxQty) {
                                 registry.setSplitCount(maxQty);
                             }
                             hudManager.setCursorImageAndText(hudArea.getFGImage(), Integer.toString(registry.getSplitCount()));
                         }
-                    } else {
-                        selectedStart = i;
-                        if (shiftKeyPressed) {
-                            registry.setSplitCount(10);
-                        } else {
-                            registry.setSplitCount(1);
-                        }
-                        if (registry.getSplitCount() > maxQty) {
-                            registry.setSplitCount(maxQty);
-                        }
-                        hudManager.setCursorImageAndText(hudArea.getFGImage(), Integer.toString(registry.getSplitCount()));
                     }
                 }
             }
@@ -980,16 +993,18 @@ public class HUDMaster extends HUD {
                                         }
                                     }
                                 }
-                            } else if (registry.getInvHUDFrom().equals("QuickBar") && !registry.getIsQuickBarLocked()) {
-                                if (hudAreaTo.getType().equals("head")
-                                        || hudAreaTo.getType().equals("chest")
-                                        || hudAreaTo.getType().equals("legs")
-                                        || hudAreaTo.getType().equals("feet")) {
-                                    hudManager.playerEquipFromInventory(selectedStart);
-                                } else if (hudAreaTo.getType().equals("inventory")) {
-                                    hudManager.playerSwapInventory(selectedStart, i);
-                                } else if (hudAreaTo.getType().equals("trash")) {
-                                    hudManager.playerDeleteInventory(selectedStart, 0, true);
+                            } else if (registry.getInvHUDFrom().equals("QuickBar")) {
+                                if (!registry.getIsQuickBarLocked()) {
+                                    if (hudAreaTo.getType().equals("head")
+                                            || hudAreaTo.getType().equals("chest")
+                                            || hudAreaTo.getType().equals("legs")
+                                            || hudAreaTo.getType().equals("feet")) {
+                                        hudManager.playerEquipFromInventory(selectedStart);
+                                    } else if (hudAreaTo.getType().equals("inventory")) {
+                                        hudManager.playerSwapInventory(selectedStart, i);
+                                    } else if (hudAreaTo.getType().equals("trash")) {
+                                        hudManager.playerDeleteInventory(selectedStart, 0, true);
+                                    }
                                 }
                             } else if (hudAreaFrom.getType().equals("inventory")) {
                                 if (hudAreaTo.getType().equals("head")

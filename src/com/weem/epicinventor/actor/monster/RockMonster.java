@@ -3,6 +3,7 @@ package com.weem.epicinventor.actor.monster;
 import com.weem.epicinventor.*;
 import com.weem.epicinventor.actor.Actor;
 import com.weem.epicinventor.ai.*;
+import com.weem.epicinventor.network.*;
 import com.weem.epicinventor.utility.*;
 
 import java.awt.*;
@@ -42,6 +43,9 @@ public class RockMonster extends Monster {
         dropChances.addDropChance("Stone", 100.0f, 2, 6);
         dropChances.addDropChance("Web", 50.0f, 1, 2);
         dropChances.addDropChance("Thorn", 25.0f, 1, 1);
+        dropChances.addDropChance("WeemsDiceBag", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("ForrestsLaptop", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("BrandonsAbacus", 0.20f, 1, 1); //1 in 500 chance
 
         ai = new AI(registry, this);
         ai.clearGoals();
@@ -51,7 +55,6 @@ public class RockMonster extends Monster {
 
     @Override
     public void hide() {
-        stateChanged = true;
         isHiding = true;
     }
 
@@ -84,7 +87,6 @@ public class RockMonster extends Monster {
             isHiding = false;
             if (actionMode != ActionMode.ATTACKING) {
                 actionMode = ActionMode.ATTACKING;
-                stateChanged = true;
             }
             attackRefreshTimerStart = System.currentTimeMillis();
             attackRefreshTimerEnd = System.currentTimeMillis() + meleeSpeed;
@@ -100,7 +102,7 @@ public class RockMonster extends Monster {
                     playerDamage += touchDamage;
                     if (this.isAttacking()) {
                         monsterManager.shakeCamera(100, 3);
-                        soundClip = new SoundClip(registry, "Monster/RockMonsterBonk", getCenterPoint());
+                        SoundClip cl = new SoundClip(registry, "Monster/RockMonsterBonk", getCenterPoint());
 
                         if (facing == Facing.RIGHT) {
                             return new Damage(this, touchDamage, 20, 10);
@@ -119,7 +121,6 @@ public class RockMonster extends Monster {
 
     @Override
     protected void updateImage() {
-        if (stateChanged) {
             hideDisplayName = false;
             if (vertMoveMode == VertMoveMode.JUMPING) {
                 setImage("Monsters/" + name + "/Jumping");
@@ -139,9 +140,20 @@ public class RockMonster extends Monster {
                     loopImage("Monsters/" + name + "/Walking", 0.05);
                 }
             }
+    }
 
-            stateChanged = false;
-        }
+    @Override
+    public UDPMonster createUpdate() {
+        UDPMonster udpUpdate = super.createUpdate();
+        udpUpdate.isHiding = isHiding;
+
+        return udpUpdate;
+    }
+
+    public void processUpdate(UDPMonster udpUpdate) {
+        super.processUpdate(udpUpdate);
+        
+        isHiding = udpUpdate.isHiding;
     }
 
     public void setLastMove(long m) {

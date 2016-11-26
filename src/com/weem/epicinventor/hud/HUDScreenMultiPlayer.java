@@ -14,6 +14,10 @@ public class HUDScreenMultiPlayer extends HUD {
     private final static int BUTTON_HOST_HEIGHT = 40;
     private final static int BUTTON_HOST_X = 296;
     private final static int BUTTON_HOST_Y = 378;
+    private final static int BUTTON_INSTRUCTIONS_WIDTH = 220;
+    private final static int BUTTON_INSTRUCTIONS_HEIGHT = 40;
+    private final static int BUTTON_INSTRUCTIONS_X = 296;
+    private final static int BUTTON_INSTRUCTIONS_Y = 230;
     private final static int BUTTON_BACK_WIDTH = 146;
     private final static int BUTTON_BACK_HEIGHT = 40;
     private final static int BUTTON_BACK_X = 333;
@@ -41,6 +45,10 @@ public class HUDScreenMultiPlayer extends HUD {
         //host
         hudArea = addArea(BUTTON_HOST_X, BUTTON_HOST_Y, BUTTON_HOST_WIDTH, BUTTON_HOST_HEIGHT, "host");
         hudArea.setImage("HUD/ScreenMultiPlayer/ButtonHost");
+
+        //instructions
+        hudArea = addArea(BUTTON_INSTRUCTIONS_X, BUTTON_INSTRUCTIONS_Y, BUTTON_INSTRUCTIONS_WIDTH, BUTTON_INSTRUCTIONS_HEIGHT, "instructions");
+        hudArea.setImage("HUD/ScreenMultiPlayer/ButtonInstructions");
 
         //back
         hudArea = addArea(BUTTON_BACK_X, BUTTON_BACK_Y, BUTTON_BACK_WIDTH, BUTTON_BACK_HEIGHT, "back");
@@ -75,14 +83,21 @@ public class HUDScreenMultiPlayer extends HUD {
                     hudManager.unloadHUD(name);
                     hudManager.loadHUD(HUDManager.HUDType.ScreenMultiPlayerHost);
                 } else if (hudArea.getType().equals("donate")) {
-                    String url = "http://epicinventor.com/donate.php";
+                    String url = "http://www.epicinventor.com/donate.html";
+
+                    try {
+                        Desktop.getDesktop().browse(java.net.URI.create(url));
+                    } catch (Exception e) {
+                    }
+                } else if (hudArea.getType().equals("instructions")) {
+                    String url = "http://www.epicinventor.com/multiplayer_instructions.html";
 
                     try {
                         Desktop.getDesktop().browse(java.net.URI.create(url));
                     } catch (Exception e) {
                     }
                 } else if (hudArea.getType().equals("help")) {
-                    String url = "http://epicinventor.com/help";
+                    String url = "http://www.epicinventor.com/help.html";
 
                     try {
                         Desktop.getDesktop().browse(java.net.URI.create(url));

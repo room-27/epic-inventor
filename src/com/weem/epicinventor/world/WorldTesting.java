@@ -3,16 +3,20 @@ package com.weem.epicinventor.world;
 import com.weem.epicinventor.world.block.*;
 
 import java.awt.*;
+import javax.swing.*;
+import java.io.*;
 import java.util.Date;
+import java.awt.image.*;
 
 public class WorldTesting extends javax.swing.JFrame {
     private BlockManager blockManager;
+    private JLabel jspLabel = null;
     
     /** Creates new form WorldTesting */
     public WorldTesting() {
         blockManager = new BlockManager();
         initComponents();
-        jTextArea1.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 5));
+        //jTextArea1.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 5));
     }
 
     /** This method is called from within the constructor to
@@ -37,14 +41,14 @@ public class WorldTesting extends javax.swing.JFrame {
         jTextField5 = new javax.swing.JTextField();
         jTextField6 = new javax.swing.JTextField();
         jButton1 = new javax.swing.JButton();
-        jScrollPane1 = new javax.swing.JScrollPane();
-        jTextArea1 = new javax.swing.JTextArea();
         jScrollPane2 = new javax.swing.JScrollPane();
         jTextArea2 = new javax.swing.JTextArea();
         jLabel7 = new javax.swing.JLabel();
         jLabel13 = new javax.swing.JLabel();
         jTextField7 = new javax.swing.JTextField();
         jTextField13 = new javax.swing.JTextField();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        jScrollPane3 = new javax.swing.JScrollPane();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -109,10 +113,6 @@ public class WorldTesting extends javax.swing.JFrame {
             }
         });
 
-        jTextArea1.setColumns(20);
-        jTextArea1.setRows(5);
-        jScrollPane1.setViewportView(jTextArea1);
-
         jTextArea2.setColumns(20);
         jTextArea2.setRows(5);
         jScrollPane2.setViewportView(jTextArea2);
@@ -174,15 +174,16 @@ public class WorldTesting extends javax.swing.JFrame {
                                 .addComponent(jTextField4, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 61, Short.MAX_VALUE))
                             .addComponent(jTextField7, javax.swing.GroupLayout.DEFAULT_SIZE, 61, Short.MAX_VALUE))
                         .addGap(78, 78, 78)))
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 842, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
+                .addGap(24, 24, 24)
+                .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 834, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(37, 37, 37))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 638, Short.MAX_VALUE)
+                    .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 610, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jLabel1)
@@ -215,7 +216,7 @@ public class WorldTesting extends javax.swing.JFrame {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jLabel13)
                             .addComponent(jTextField13, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 186, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 211, Short.MAX_VALUE)
                         .addComponent(jButton1)
                         .addGap(66, 66, 66)
                         .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 136, javax.swing.GroupLayout.PREFERRED_SIZE)))
@@ -257,46 +258,62 @@ public class WorldTesting extends javax.swing.JFrame {
         String start = date.toString();
         World nw = new World("", Integer.parseInt(jTextField1.getText()), Integer.parseInt(jTextField2.getText()), Integer.parseInt(jTextField3.getText()), Integer.parseInt(jTextField4.getText()), Integer.parseInt(jTextField5.getText()), Integer.parseInt(jTextField6.getText()),
                 Integer.parseInt(jTextField7.getText()), Float.parseFloat(jTextField13.getText()));
+        BlockManager bm = new BlockManager();
+        bm.loadBlocks(nw);
         long mem1 = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         Date date2 = new Date();
         String end = date2.toString();
         jTextArea2.setText("Memory Used: " + (mem1 - mem0) + "\nStart: " + start + "\nEnd: " + end);
-
+        
+        BufferedImage image = bm.getAsGif();
+        
         int SIZE = Integer.parseInt(jTextField1.getText());
-        int[][] printBlockArray = nw.blockArray;
+        //int[][] printBlockArray = nw.blockArray;
 
-        jTextArea1.setText("");
-
-        String str = null;
-        for (int z = SIZE - 1; z > -1; z--) {
-            str = "";
-            for (int x = 0; x < SIZE * Integer.parseInt(jTextField2.getText()); x++) {
-                if (z < 3) {
-                    str += "2";
-                } else {
-                    if (blockManager.isIdInGroup(printBlockArray[x][z], "None")) {
-                        str += " ";
-                    } else if (blockManager.isIdInGroup(printBlockArray[x][z], "Dirt")) {
-                        str += "2";
-                    } else if (blockManager.isIdInGroup(printBlockArray[x][z], "Grass")) {
-                        str += "0";
-                    } else if (blockManager.isIdInGroup(printBlockArray[x][z], "Stone")) {
-                        str += "1";
-                    } else if (blockManager.isIdInGroup(printBlockArray[x][z], "Town")) {
-                        str += "3";
-                    } else if (blockManager.isIdInGroup(printBlockArray[x][z], "CaveBG")) {
-                        str += "4";
-                    } else if (blockManager.isIdInGroup(printBlockArray[x][z], "Ore")) {
-                        str += "5";
-                    } else if (blockManager.isIdInGroup(printBlockArray[x][z], "Sand")) {
-                        str += "6";
-                    } else if (blockManager.isIdInGroup(printBlockArray[x][z], "Mud")) {
-                        str += "7";
-                    }
-                }
-            }
-            jTextArea1.setText(jTextArea1.getText() + str + "\n");
-        }
+        //jTextArea1.setText("");
+//        if(jspLabel == null) {
+//            jspLabel = new JLabel();
+//            jScrollPane3.setViewportView(jspLabel);
+//        }
+//        jspLabel.setIcon(new ImageIcon("CardImage.gif"));
+//        jspLabel.invalidate();
+//        jspLabel.repaint();
+        
+        //jScrollPane3.removeAll();
+        jScrollPane3.getViewport().setView(new JLabel(new ImageIcon(image)));
+        //jScrollPane3.revalidate();
+        jScrollPane3.repaint();
+        SwingUtilities.updateComponentTreeUI(this);
+//        String str = null;
+//        for (int z = SIZE - 1; z > -1; z--) {
+//            str = "";
+//            for (int x = 0; x < SIZE * Integer.parseInt(jTextField2.getText()); x++) {
+//                if (z < 3) {
+//                    str += "2";
+//                } else {
+//                    if (blockManager.isIdInGroup(printBlockArray[x][z], "None")) {
+//                        str += " ";
+//                    } else if (blockManager.isIdInGroup(printBlockArray[x][z], "Dirt")) {
+//                        str += "2";
+//                    } else if (blockManager.isIdInGroup(printBlockArray[x][z], "Grass")) {
+//                        str += "0";
+//                    } else if (blockManager.isIdInGroup(printBlockArray[x][z], "Stone")) {
+//                        str += "1";
+//                    } else if (blockManager.isIdInGroup(printBlockArray[x][z], "Town")) {
+//                        str += "3";
+//                    } else if (blockManager.isIdInGroup(printBlockArray[x][z], "CaveBG")) {
+//                        str += "4";
+//                    } else if (blockManager.isIdInGroup(printBlockArray[x][z], "Ore")) {
+//                        str += "5";
+//                    } else if (blockManager.isIdInGroup(printBlockArray[x][z], "Sand")) {
+//                        str += "6";
+//                    } else if (blockManager.isIdInGroup(printBlockArray[x][z], "Mud")) {
+//                        str += "7";
+//                    }
+//                }
+//            }
+//            jTextArea1.setText(jTextArea1.getText() + str + "\n");
+//        }
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jTextField7ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextField7ActionPerformed
@@ -330,7 +347,7 @@ public class WorldTesting extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel7;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
-    private javax.swing.JTextArea jTextArea1;
+    private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JTextArea jTextArea2;
     private javax.swing.JTextField jTextField1;
     private javax.swing.JTextField jTextField13;

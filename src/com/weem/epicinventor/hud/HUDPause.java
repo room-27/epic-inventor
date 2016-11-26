@@ -70,14 +70,14 @@ public class HUDPause extends HUD {
                     shouldRender = false;
                     hudManager.loadHUD(HUDManager.HUDType.Credits);
                 } else if (hudArea.getType().equals("crafting")) {
-                    String url = "http://www.epicinventor.com/crafting/";
+                    String url = "http://crafting.epicinventor.com";
 
                     try {
                         Desktop.getDesktop().browse(java.net.URI.create(url));
                     } catch (Exception e) {
                     }
                 } else if (hudArea.getType().equals("donate")) {
-                    String url = "http://epicinventor.com/donate.php";
+                    String url = "http://www.epicinventor.com/donate.html";
 
                     try {
                         Desktop.getDesktop().browse(java.net.URI.create(url));

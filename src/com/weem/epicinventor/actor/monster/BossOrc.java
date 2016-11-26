@@ -10,7 +10,6 @@ import java.awt.*;
 public class BossOrc extends Monster {
 
     private static final long serialVersionUID = 10000L;
-    public transient SoundClip soundClip;
     private long lastMove;
 
     public BossOrc(MonsterManager mm, Registry rg, String im, String st, int x, int y, int minDist, int maxDist) {
@@ -53,6 +52,9 @@ public class BossOrc extends Monster {
         dropChances.addDropChance("Rope", 5.0f, 1, 1);
         dropChances.addDropChance("Diamond", 3.0f, 1, 2);
         dropChances.addDropChance("ScrapHammer", 5.0f, 1, 1);
+        dropChances.addDropChance("WeemsDiceBag", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("ForrestsLaptop", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("BrandonsAbacus", 0.20f, 1, 1); //1 in 500 chance
 
         ai = new AI(registry, this);
         ai.clearGoals();
@@ -65,7 +67,6 @@ public class BossOrc extends Monster {
         if (attackRefreshTimerEnd < System.currentTimeMillis()) {
             if (actionMode != ActionMode.ATTACKING) {
                 actionMode = ActionMode.ATTACKING;
-                stateChanged = true;
             }
             attackRefreshTimerStart = System.currentTimeMillis();
             attackRefreshTimerEnd = System.currentTimeMillis() + meleeSpeed;
@@ -147,7 +148,7 @@ public class BossOrc extends Monster {
         if (hitPoints < baseHitPoints && isStomping) {
             monsterManager.shakeCamera(500, 10);
             monsterManager.stunPlayersOnGround(1500);
-            soundClip = new SoundClip(registry, "Monster/BossOrcStomp", getCenterPoint());
+            SoundClip cl = new SoundClip(registry, "Monster/BossOrcStomp", getCenterPoint());
         }
     }
 
@@ -235,7 +236,7 @@ public class BossOrc extends Monster {
                     if (this.isAttacking()) {
                         setStatusStun(true, 5000);
                         monsterManager.shakeCamera(100, 3);
-                        soundClip = new SoundClip(registry, "Monster/BossOrcBonk", getCenterPoint());
+                        SoundClip cl = new SoundClip(registry, "Monster/BossOrcBonk", getCenterPoint());
 
                         if (facing == Facing.RIGHT) {
                             return new Damage(this, touchDamage, 20, 10);
@@ -254,26 +255,22 @@ public class BossOrc extends Monster {
 
     @Override
     protected void updateImage() {
-        if (stateChanged) {
-            if (vertMoveMode == VertMoveMode.JUMPING) {
-                setImage("Monsters/" + name + "/Jumping");
-            } else if (vertMoveMode == VertMoveMode.FLYING) {
-                loopImage("Monsters/" + name + "/Flapping");
-            } else if (vertMoveMode == VertMoveMode.FALLING) {
-                loopImage("Monsters/" + name + "/Falling");
-            } else if (statusStun) {
-                loopImage("Monsters/" + name + "/Stunned");
+        if (vertMoveMode == VertMoveMode.JUMPING) {
+            setImage("Monsters/" + name + "/Jumping");
+        } else if (vertMoveMode == VertMoveMode.FLYING) {
+            loopImage("Monsters/" + name + "/Flapping");
+        } else if (vertMoveMode == VertMoveMode.FALLING) {
+            loopImage("Monsters/" + name + "/Falling");
+        } else if (statusStun) {
+            loopImage("Monsters/" + name + "/Stunned");
+        } else {
+            if (this.isAttacking()) {
+                loopImage("Monsters/" + name + "/Attacking", 0.05);
+            } else if (isStill) {
+                setImage("Monsters/" + name + "/Standing");
             } else {
-                if (this.isAttacking()) {
-                    loopImage("Monsters/" + name + "/Attacking", 0.05);
-                } else if (isStill) {
-                    setImage("Monsters/" + name + "/Standing");
-                } else {
-                    loopImage("Monsters/" + name + "/Walking");
-                }
+                loopImage("Monsters/" + name + "/Walking");
             }
-
-            stateChanged = false;
         }
     }
 
@@ -281,7 +278,7 @@ public class BossOrc extends Monster {
     public void updateLong() {
         if (hitPoints == baseHitPoints) {
             if (nextSoundPlay <= registry.currentTime) {
-                soundClip = new SoundClip(registry, "Monster/Ambient" + name + Rand.getRange(1, 4), getCenterPoint());
+                SoundClip cl = new SoundClip(registry, "Monster/Ambient" + name + Rand.getRange(1, 4), getCenterPoint());
                 nextSoundPlay = registry.currentTime + Rand.getRange(6000, 10000);
                 doChat(2000);
             }
@@ -289,10 +286,7 @@ public class BossOrc extends Monster {
     }
 
     public void playNewClip(String name, long duration) {
-        if (soundClip != null) {
-            soundClip.stop();
-        }
-        soundClip = new SoundClip(registry, name, getCenterPoint());
+        SoundClip cl = new SoundClip(registry, name, getCenterPoint());
         doChat(duration);
     }
 
@@ -304,33 +298,35 @@ public class BossOrc extends Monster {
     public void update() {
         super.update();
 
-        if (isDead) {
-            monsterManager.setNextBossOrcSpawn(0);
-        }
-
-        if (this.isAttacking()) {
-            topOffset = 44;
-            baseWidth = 52;
-            if (this.facing == Facing.RIGHT) {
-                baseOffset = 12;
-            } else {
-                baseOffset = 64;
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            if (isDead) {
+                monsterManager.setNextBossOrcSpawn(0);
             }
-        } else {
-            topOffset = 2;
-            baseWidth = 48;
-            baseOffset = 36;
-        }
 
-        if (isDead) {
-            registry.setBossFight(false);
-        }
+            if (this.isAttacking()) {
+                topOffset = 44;
+                baseWidth = 52;
+                if (this.facing == Facing.RIGHT) {
+                    baseOffset = 12;
+                } else {
+                    baseOffset = 64;
+                }
+            } else {
+                topOffset = 2;
+                baseWidth = 48;
+                baseOffset = 36;
+            }
 
-        //if boss hasn't moved in 15 seconds, he's probably stuck, remove him and respawn
-        if (this.isAttacking()) {
-            if (registry.currentTime - lastMove > (15 * 1000)) {
-                isDirty = true;
+            if (isDead) {
                 registry.setBossFight(false);
+            }
+
+            //if boss hasn't moved in 15 seconds, he's probably stuck, remove him and respawn
+            if (this.isAttacking()) {
+                if (registry.currentTime - lastMove > (15 * 1000)) {
+                    isDirty = true;
+                    registry.setBossFight(false);
+                }
             }
         }
     }

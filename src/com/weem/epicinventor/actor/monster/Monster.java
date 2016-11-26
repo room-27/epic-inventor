@@ -49,7 +49,6 @@ public abstract class Monster extends Actor implements Serializable {
 
         spawnType = st;
 
-        stateChanged = true;
         isStill = true;
         facing = Facing.LEFT;
         vertMoveMode = VertMoveMode.NOT_JUMPING;
@@ -332,7 +331,7 @@ public abstract class Monster extends Actor implements Serializable {
         }
 
         if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdateMonster um = new UpdateMonster(this.getId());
                 um.mapX = this.getMapX();
                 um.mapY = this.getMapY();
@@ -430,6 +429,10 @@ public abstract class Monster extends Actor implements Serializable {
     }
 
     public Damage getMonsterTouchDamage(Rectangle r) {
+        return getMonsterTouchDamage(r, 0);
+    }
+
+    public Damage getMonsterTouchDamage(Rectangle r, int x) {
         if (hitPoints > 0) {
             if (spriteRect != null && r != null) {
                 if (spriteRect.intersects(r)) {
@@ -467,14 +470,12 @@ public abstract class Monster extends Actor implements Serializable {
 
     public void stopJump() {
         if (vertMoveMode == VertMoveMode.JUMPING) {
-            stateChanged = true;
             vertMoveMode = VertMoveMode.FALLING;
         }
     }
 
     public void stopAscend() {
         if (vertMoveMode == VertMoveMode.FLYING) {
-            stateChanged = true;
             vertMoveMode = VertMoveMode.FALLING;
         }
     }
@@ -484,7 +485,6 @@ public abstract class Monster extends Actor implements Serializable {
         if (attackRefreshTimerEnd < System.currentTimeMillis()) {
             if (actionMode != ActionMode.ATTACKING) {
                 actionMode = ActionMode.ATTACKING;
-                stateChanged = true;
             }
             attackRefreshTimerStart = System.currentTimeMillis();
             attackRefreshTimerEnd = System.currentTimeMillis() + meleeSpeed;
@@ -498,7 +498,6 @@ public abstract class Monster extends Actor implements Serializable {
 
     public void stopAttack() {
         actionMode = ActionMode.NONE;
-        stateChanged = true;
     }
 
     public int getXPByPlayer(Actor a) {
@@ -573,6 +572,10 @@ public abstract class Monster extends Actor implements Serializable {
         }
     }
 
+    public void setHitPoints(int hp) {
+        hitPoints = hp;
+    }
+
     @Override
     public void update() {
         super.update();
@@ -590,26 +593,28 @@ public abstract class Monster extends Actor implements Serializable {
         }
 
         if (hitPoints > 0) {
-            if (knockBackX > 0) {
-                mapX += checkCollide(knockBackX);
-            } else if (knockBackX < 0) {
-                mapX -= checkCollide(knockBackX);
-            } else {
-                if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.CLIENT) {
-                    ai.process(true);
+            if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+                if (knockBackX > 0) {
+                    mapX += checkCollide(knockBackX);
+                } else if (knockBackX < 0) {
+                    mapX -= checkCollide(knockBackX);
                 } else {
-                    ai.process();
-                }
-                if (ai.getChanged()) {
-                    ai.setChanged(false);
-                    if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                        if (registry.getNetworkThread().readyForUpdates) {
-                            UpdateMonster um = new UpdateMonster(this.getId());
-                            um.mapX = this.getMapX();
-                            um.mapY = this.getMapY();
-                            um.previousGoal = ai.getPreviousGoal();
-                            um.currentGoal = ai.getCurrentGoal();
-                            registry.getNetworkThread().sendData(um);
+                    if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.CLIENT) {
+                        ai.process(true);
+                    } else {
+                        ai.process();
+                    }
+                    if (ai.getChanged()) {
+                        ai.setChanged(false);
+                        if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
+                            if (registry.getNetworkThread().readyForUpdates()) {
+                                UpdateMonster um = new UpdateMonster(this.getId());
+                                um.mapX = this.getMapX();
+                                um.mapY = this.getMapY();
+                                um.previousGoal = ai.getPreviousGoal();
+                                um.currentGoal = ai.getCurrentGoal();
+                                registry.getNetworkThread().sendData(um);
+                            }
                         }
                     }
                 }
@@ -631,6 +636,16 @@ public abstract class Monster extends Actor implements Serializable {
                 }
             }
         } else {
+            if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
+                if (registry.getNetworkThread().readyForUpdates()) {
+                    UpdateMonster um = new UpdateMonster(this.getId());
+                    um.mapX = this.getMapX();
+                    um.mapY = this.getMapY();
+                    um.action = "Die";
+                    registry.getNetworkThread().sendData(um);
+                }
+            }
+
             SoundClip cl = new SoundClip(registry, "Monster/Die" + name, getCenterPoint());
             isDead = true;
             ai.terminate();
@@ -658,28 +673,46 @@ public abstract class Monster extends Actor implements Serializable {
             }
         }
 
-        if (vertMoveMode == VertMoveMode.JUMPING) {
-            updateJumping();
-        } else if (vertMoveMode == VertMoveMode.FLYING) {
-            updateAscending();
-        } else if (vertMoveMode == VertMoveMode.FALLING) {
-            updateFalling();
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            if (vertMoveMode == VertMoveMode.JUMPING) {
+                updateJumping();
+            } else if (vertMoveMode == VertMoveMode.FLYING) {
+                updateAscending();
+            } else if (vertMoveMode == VertMoveMode.FALLING) {
+                updateFalling();
+            }
+
+            mapX = monsterManager.checkMapX(mapX, width);
+            mapY = monsterManager.checkMapY(mapY, height);
         }
 
-        mapX = monsterManager.checkMapX(mapX, width);
-        mapY = monsterManager.checkMapY(mapY, height);
+        Player p = registry.getPlayerManager().getCurrentPlayer();
 
-        if (mapX >= monsterManager.getMapOffsetX()
-                && (mapX - width) <= (monsterManager.getMapOffsetX() + monsterManager.getPWidth())
-                && mapY >= monsterManager.getMapOffsetY()
-                && (mapY - height) <= (monsterManager.getMapOffsetY() + monsterManager.getPHeight())) {
+        if (spriteRect.intersects(manager.getPanelRect())) {
             isInPanel = true;
         } else {
             isInPanel = false;
         }
+       /*if (p != null) {
+            if (mapX >= (p.getMapX() - (monsterManager.getPWidth() / 2))
+                    && mapX <= (p.getMapX() + (monsterManager.getPWidth() / 2))
+                    && mapY >= (p.getMapY() - (monsterManager.getPHeight() / 2))
+                    && mapY  <= (p.getMapY() + (monsterManager.getPHeight() / 2))) {
+                isInPanel = true;
+            } else {
+                isInPanel = false;
+            }
+        } else {
+            isInPanel = true;
+        }*/
+        
+        //debugInfo = Boolean.toString(isInPanel)
+        //showGoals = true;
 
-        if (vertMoveMode != VertMoveMode.FALLING) {
-            checkIfFalling();
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            if (vertMoveMode != VertMoveMode.FALLING) {
+                checkIfFalling();
+            }
         }
 
         updateImage();
@@ -732,233 +765,315 @@ public abstract class Monster extends Actor implements Serializable {
 
     @Override
     public void render(Graphics g) {
-        int statusCount = 0;
-        int statusX = 0;
-        int statusNewXPos = 0;
-        BufferedImage im;
+        if (shouldRender) {
+            int statusCount = 0;
+            int statusX = 0;
+            int statusNewXPos = 0;
+            BufferedImage im;
 
-        if (isAnimating) {
-            im = registry.getImageLoader().getImage(image, currentAnimationFrame);
-        } else {
-            im = registry.getImageLoader().getImage(image);
-        }
-
-        int xPos = monsterManager.mapToPanelX(mapX);
-        int yPos = monsterManager.mapToPanelY(mapY);
-
-        //flip the yPos since drawing happens top down versus bottom up
-        yPos = monsterManager.getPHeight() - yPos;
-
-        //subtract the height since points are bottom left and drawing starts from top left
-        yPos -= height;
-
-        if (im != null) {
-            if (facing == Facing.LEFT) {
-                AffineTransform tx = AffineTransform.getScaleInstance(1, -1);
-                tx = AffineTransform.getScaleInstance(-1, 1);
-                tx.translate(-width, 0);
-                AffineTransformOp op = new AffineTransformOp(tx, AffineTransformOp.TYPE_BILINEAR);
-                BufferedImage imLeft = op.filter(im, null);
-                if (imLeft != null) {
-                    g.drawImage(imLeft, xPos, yPos, null);
-                }
+            if (isAnimating) {
+                im = registry.getImageLoader().getImage(image, currentAnimationFrame);
             } else {
-                g.drawImage(im, xPos, yPos, null);
-            }
-        }
-
-
-        //render statuses
-        if (statusFear) {
-            statusCount++;
-        }
-        if (statusHeal) {
-            statusCount++;
-        }
-        if (statusPoison) {
-            statusCount++;
-        }
-        if (statusSlowed) {
-            statusCount++;
-        }
-
-        if (statusCount > 0) {
-            int totalWidth = (statusCount * STATUS_WIDTH) + ((statusCount - 1) * STATUS_SPACING);
-            statusX = getCenterPoint().x - (totalWidth / 2);
-            int i = 0;
-
-            if (statusFear) {
-                statusNewXPos = statusX + (i * STATUS_WIDTH) + (i * STATUS_SPACING);
-
-                xPos = manager.mapToPanelX(statusNewXPos);
-                yPos = manager.mapToPanelY(mapY + 50);
-
-                //flip the yPos since drawing happens top down versus bottom up
-                yPos = manager.getPHeight() - yPos;
-
-                //subtract the height since points are bottom left and drawing starts from top left
-                yPos -= height;
-
-                im = registry.getImageLoader().getImage("Effects/Fear");
-                if (im != null) {
-                    g.drawImage(im, xPos, yPos, null);
-                }
-                i++;
+                im = registry.getImageLoader().getImage(image);
             }
 
-            if (statusHeal) {
-                statusNewXPos = statusX + (i * STATUS_WIDTH) + (i * STATUS_SPACING);
+            int xPos = monsterManager.mapToPanelX(mapX);
+            int yPos = monsterManager.mapToPanelY(mapY);
 
-                xPos = manager.mapToPanelX(statusNewXPos);
-                yPos = manager.mapToPanelY(mapY + 50);
-
-                //flip the yPos since drawing happens top down versus bottom up
-                yPos = manager.getPHeight() - yPos;
-
-                //subtract the height since points are bottom left and drawing starts from top left
-                yPos -= height;
-
-                im = registry.getImageLoader().getImage("Effects/Heal");
-                if (im != null) {
-                    g.drawImage(im, xPos, yPos, null);
-                }
-                i++;
-            }
-
-            if (statusPoison) {
-                statusNewXPos = statusX + (i * STATUS_WIDTH) + (i * STATUS_SPACING);
-
-                xPos = manager.mapToPanelX(statusNewXPos);
-                yPos = manager.mapToPanelY(mapY + 50);
-
-                //flip the yPos since drawing happens top down versus bottom up
-                yPos = manager.getPHeight() - yPos;
-
-                //subtract the height since points are bottom left and drawing starts from top left
-                yPos -= height;
-
-                im = registry.getImageLoader().getImage("Effects/Poison");
-                if (im != null) {
-                    g.drawImage(im, xPos, yPos, null);
-                }
-                i++;
-            }
-
-            if (statusSlowed) {
-                statusNewXPos = statusX + (i * STATUS_WIDTH) + (i * STATUS_SPACING);
-
-                xPos = manager.mapToPanelX(statusNewXPos);
-                yPos = manager.mapToPanelY(mapY + 50);
-
-                //flip the yPos since drawing happens top down versus bottom up
-                yPos = manager.getPHeight() - yPos;
-
-                //subtract the height since points are bottom left and drawing starts from top left
-                yPos -= height;
-
-                im = registry.getImageLoader().getImage("Effects/Slowed");
-                if (im != null) {
-                    g.drawImage(im, xPos, yPos, null);
-                }
-                i++;
-            }
-        }
-
-        if (hideDisplayName == false) {
-            /*
-             * xPos = manager.mapToPanelX(this.getCenterPoint().x - 81); yPos =
-             * manager.mapToPanelY(mapY + height);
-             *
-             * //flip the yPos since drawing happens top down versus bottom up
-             * yPos = manager.getPHeight() - yPos;
-             *
-             * //subtract the height since points are bottom left and drawing
-             * starts from top left yPos -= height;
-             *
-             * im = registry.getImageLoader().getImage("Misc/NameBG"); if (im !=
-             * null) { g.drawImage(im, xPos, yPos, null);
-            }
-             */
-            Font textFont = new Font("SansSerif", Font.BOLD, 14);
-            g.setFont(textFont);
-
-            FontMetrics fm = g.getFontMetrics();
-            int messageWidth = fm.stringWidth(displayName + " (" + level + ")");
-
-            xPos = monsterManager.mapToPanelX((int) mapX + (width / 2) - (messageWidth / 2));
-            yPos = monsterManager.mapToPanelY((int) mapY + height);
+            //flip the yPos since drawing happens top down versus bottom up
             yPos = monsterManager.getPHeight() - yPos;
 
-            if (level == -1) {
-                registry.ghettoOutline(g, Color.BLACK, displayName + " (?)", xPos, yPos);
+            //subtract the height since points are bottom left and drawing starts from top left
+            yPos -= height;
 
-                g.setColor(getColorBasedOnPlayerLevel(registry.getPlayerManager().getCurrentPlayer().getLevel()));
-                g.drawString(displayName + " (?)", xPos, yPos);
-            } else {
-                registry.ghettoOutline(g, Color.BLACK, displayName + " (" + level + ")", xPos, yPos);
+            if (im != null) {
+                if (facing == Facing.LEFT) {
+                    AffineTransform tx = AffineTransform.getScaleInstance(1, -1);
+                    tx = AffineTransform.getScaleInstance(-1, 1);
+                    tx.translate(-width, 0);
+                    AffineTransformOp op = new AffineTransformOp(tx, AffineTransformOp.TYPE_BILINEAR);
+                    BufferedImage imLeft = op.filter(im, null);
+                    if (imLeft != null) {
+                        g.drawImage(imLeft, xPos, yPos, null);
+                    }
+                } else {
+                    g.drawImage(im, xPos, yPos, null);
+                }
+            }
 
-                PlayerManager playerManager = registry.getPlayerManager();
-                if (playerManager != null) {
-                    Player p = registry.getPlayerManager().getCurrentPlayer();
-                    if (p != null) {
-                        g.setColor(getColorBasedOnPlayerLevel(p.getLevel()));
-                        g.drawString(displayName + " (" + level + ")", xPos, yPos);
+
+            //render statuses
+            if (statusFear) {
+                statusCount++;
+            }
+            if (statusHeal) {
+                statusCount++;
+            }
+            if (statusPoison) {
+                statusCount++;
+            }
+            if (statusSlowed) {
+                statusCount++;
+            }
+
+            if (statusCount > 0) {
+                int totalWidth = (statusCount * STATUS_WIDTH) + ((statusCount - 1) * STATUS_SPACING);
+                statusX = getCenterPoint().x - (totalWidth / 2);
+                int i = 0;
+
+                if (statusFear) {
+                    statusNewXPos = statusX + (i * STATUS_WIDTH) + (i * STATUS_SPACING);
+
+                    xPos = manager.mapToPanelX(statusNewXPos);
+                    yPos = manager.mapToPanelY(mapY + 50);
+
+                    //flip the yPos since drawing happens top down versus bottom up
+                    yPos = manager.getPHeight() - yPos;
+
+                    //subtract the height since points are bottom left and drawing starts from top left
+                    yPos -= height;
+
+                    im = registry.getImageLoader().getImage("Effects/Fear");
+                    if (im != null) {
+                        g.drawImage(im, xPos, yPos, null);
+                    }
+                    i++;
+                }
+
+                if (statusHeal) {
+                    statusNewXPos = statusX + (i * STATUS_WIDTH) + (i * STATUS_SPACING);
+
+                    xPos = manager.mapToPanelX(statusNewXPos);
+                    yPos = manager.mapToPanelY(mapY + 50);
+
+                    //flip the yPos since drawing happens top down versus bottom up
+                    yPos = manager.getPHeight() - yPos;
+
+                    //subtract the height since points are bottom left and drawing starts from top left
+                    yPos -= height;
+
+                    im = registry.getImageLoader().getImage("Effects/Heal");
+                    if (im != null) {
+                        g.drawImage(im, xPos, yPos, null);
+                    }
+                    i++;
+                }
+
+                if (statusPoison) {
+                    statusNewXPos = statusX + (i * STATUS_WIDTH) + (i * STATUS_SPACING);
+
+                    xPos = manager.mapToPanelX(statusNewXPos);
+                    yPos = manager.mapToPanelY(mapY + 50);
+
+                    //flip the yPos since drawing happens top down versus bottom up
+                    yPos = manager.getPHeight() - yPos;
+
+                    //subtract the height since points are bottom left and drawing starts from top left
+                    yPos -= height;
+
+                    im = registry.getImageLoader().getImage("Effects/Poison");
+                    if (im != null) {
+                        g.drawImage(im, xPos, yPos, null);
+                    }
+                    i++;
+                }
+
+                if (statusSlowed) {
+                    statusNewXPos = statusX + (i * STATUS_WIDTH) + (i * STATUS_SPACING);
+
+                    xPos = manager.mapToPanelX(statusNewXPos);
+                    yPos = manager.mapToPanelY(mapY + 50);
+
+                    //flip the yPos since drawing happens top down versus bottom up
+                    yPos = manager.getPHeight() - yPos;
+
+                    //subtract the height since points are bottom left and drawing starts from top left
+                    yPos -= height;
+
+                    im = registry.getImageLoader().getImage("Effects/Slowed");
+                    if (im != null) {
+                        g.drawImage(im, xPos, yPos, null);
+                    }
+                    i++;
+                }
+            }
+
+            if (hideDisplayName == false) {
+                /*
+                 * xPos = manager.mapToPanelX(this.getCenterPoint().x - 81);
+                 * yPos = manager.mapToPanelY(mapY + height);
+                 *
+                 * //flip the yPos since drawing happens top down versus bottom
+                 * up yPos = manager.getPHeight() - yPos;
+                 *
+                 * //subtract the height since points are bottom left and
+                 * drawing starts from top left yPos -= height;
+                 *
+                 * im = registry.getImageLoader().getImage("Misc/NameBG"); if
+                 * (im != null) { g.drawImage(im, xPos, yPos, null); }
+                 */
+                Font textFont = new Font("SansSerif", Font.BOLD, 14);
+                g.setFont(textFont);
+
+                FontMetrics fm = g.getFontMetrics();
+                int messageWidth = fm.stringWidth(displayName + " (" + level + ")");
+
+                xPos = monsterManager.mapToPanelX((int) mapX + (width / 2) - (messageWidth / 2));
+                yPos = monsterManager.mapToPanelY((int) mapY + height);
+                yPos = monsterManager.getPHeight() - yPos;
+
+                if (level == -1) {
+                    registry.ghettoOutline(g, Color.BLACK, displayName + " (?)", xPos, yPos);
+
+                    g.setColor(getColorBasedOnPlayerLevel(registry.getPlayerManager().getCurrentPlayer().getLevel()));
+                    g.drawString(displayName + " (?)", xPos, yPos);
+                } else {
+                    registry.ghettoOutline(g, Color.BLACK, displayName + " (" + level + ")", xPos, yPos);
+
+                    PlayerManager playerManager = registry.getPlayerManager();
+                    if (playerManager != null) {
+                        Player p = registry.getPlayerManager().getCurrentPlayer();
+                        if (p != null) {
+                            g.setColor(getColorBasedOnPlayerLevel(p.getLevel()));
+                            g.drawString(displayName + " (" + level + ")", xPos, yPos);
+                        }
                     }
                 }
             }
-        }
 
-        if (hitPoints < totalHitPoints) {
-            float percentage;
+            if (hitPoints < totalHitPoints) {
+                float percentage;
 
-            int x = mapX + (width / 2);
-            int y = mapY + height;
+                int x = mapX + (width / 2);
+                int y = mapY + height;
 
-            percentage = ((float) hitPoints / (float) totalHitPoints) * 100;
+                percentage = ((float) hitPoints / (float) totalHitPoints) * 100;
 
-            monsterManager.displayHP(g,
-                    x,
-                    y,
-                    (int) percentage);
-        }
-
-        if (monsterManager.getSelectedMob() == this) {
-            xPos = manager.mapToPanelX(mapX + (baseWidth / 2) + baseOffset - 12);
-            yPos = manager.mapToPanelY(mapY);
-
-            //flip the yPos since drawing happens top down versus bottom up
-            yPos = manager.getPHeight() - yPos;
-
-            im = registry.getImageLoader().getImage("Monsters/Selected");
-            if (im != null) {
-                g.drawImage(im, xPos, yPos, null);
+                monsterManager.displayHP(g,
+                        x,
+                        y,
+                        (int) percentage);
             }
-        }
 
-        super.render(g);
+            if (monsterManager.getSelectedMob() == this) {
+                xPos = manager.mapToPanelX(mapX + (baseWidth / 2) + baseOffset - 12);
+                yPos = manager.mapToPanelY(mapY);
+
+                //flip the yPos since drawing happens top down versus bottom up
+                yPos = manager.getPHeight() - yPos;
+
+                im = registry.getImageLoader().getImage("Monsters/Selected");
+                if (im != null) {
+                    g.drawImage(im, xPos, yPos, null);
+                }
+            }
+
+            super.render(g);
+        }
     }
 
     @Override
     protected void updateImage() {
-        if (stateChanged) {
-            if (vertMoveMode == VertMoveMode.JUMPING) {
-                setImage("Monsters/" + name + "/Jumping");
-            } else if (vertMoveMode == VertMoveMode.FLYING) {
-                loopImage("Monsters/" + name + "/Flapping");
-            } else if (vertMoveMode == VertMoveMode.FALLING) {
-                loopImage("Monsters/" + name + "/Falling");
+        if (vertMoveMode == VertMoveMode.JUMPING) {
+            setImage("Monsters/" + name + "/Jumping");
+        } else if (vertMoveMode == VertMoveMode.FLYING) {
+            loopImage("Monsters/" + name + "/Flapping");
+        } else if (vertMoveMode == VertMoveMode.FALLING) {
+            loopImage("Monsters/" + name + "/Falling");
+        } else {
+            if (this.isAttacking()) {
+                loopImage("Monsters/" + name + "/Attacking");
+            } else if (isStill) {
+                setImage("Monsters/" + name + "/Standing");
             } else {
-                if (this.isAttacking()) {
-                    loopImage("Monsters/" + name + "/Attacking");
-                } else if (isStill) {
-                    setImage("Monsters/" + name + "/Standing");
-                } else {
-                    loopImage("Monsters/" + name + "/Walking");
-                }
+                loopImage("Monsters/" + name + "/Walking");
             }
-
-            stateChanged = false;
         }
+    }
+
+    public UDPMonster createUpdate() {
+        UDPMonster udpUpdate = new UDPMonster(id);
+        udpUpdate.mapX = mapX;
+        udpUpdate.lastMapY = lastMapY;
+        udpUpdate.mapY = mapY;
+        udpUpdate.width = width;
+        udpUpdate.height = height;
+        udpUpdate.xMoveSize = xMoveSize;
+        udpUpdate.actionMode = actionMode;
+        udpUpdate.vertMoveMode = vertMoveMode;
+        udpUpdate.facing = facing;
+        udpUpdate.jumpSize = jumpSize;
+        udpUpdate.ascendOriginalSize = ascendOriginalSize;
+        udpUpdate.ascendSize = ascendSize;
+        udpUpdate.ascendCount = ascendCount;
+        udpUpdate.ascendMax = ascendMax;
+        udpUpdate.fallSize = fallSize;
+        udpUpdate.isStill = isStill;
+        udpUpdate.isTryingToMove = isTryingToMove;
+        udpUpdate.startJumpSize = startJumpSize;
+        udpUpdate.maxFallSize = maxFallSize;
+        udpUpdate.gravity = gravity;
+        udpUpdate.totalFall = totalFall;
+        udpUpdate.completeFall = completeFall;
+        udpUpdate.totalHitPoints = totalHitPoints;
+        udpUpdate.hitPoints = hitPoints;
+        udpUpdate.totalArmorPoints = totalArmorPoints;
+        udpUpdate.armorPoints = armorPoints;
+        udpUpdate.knockBackX = knockBackX;
+        udpUpdate.isDead = isDead;
+        udpUpdate.touchDamage = touchDamage;
+        udpUpdate.meleeDamage = meleeDamage;
+        udpUpdate.meleeSpeed = meleeSpeed;
+        udpUpdate.mapXMin = mapXMin;
+        udpUpdate.mapXMax = mapXMax;
+        udpUpdate.groundLevel = groundLevel;
+        udpUpdate.isDirty = isDirty;
+        udpUpdate.playerDamage = playerDamage;
+        udpUpdate.placeableDamage = placeableDamage;
+        udpUpdate.level = level;
+
+        return udpUpdate;
+    }
+
+    public void processUpdate(UDPMonster udpUpdate) {
+        mapX = udpUpdate.mapX;
+        lastMapY = udpUpdate.lastMapY;
+        mapY = udpUpdate.mapY;
+        width = udpUpdate.width;
+        height = udpUpdate.height;
+        xMoveSize = udpUpdate.xMoveSize;
+        actionMode = udpUpdate.actionMode;
+        vertMoveMode = udpUpdate.vertMoveMode;
+        facing = udpUpdate.facing;
+        jumpSize = udpUpdate.jumpSize;
+        ascendOriginalSize = udpUpdate.ascendOriginalSize;
+        ascendSize = udpUpdate.ascendSize;
+        ascendCount = udpUpdate.ascendCount;
+        ascendMax = udpUpdate.ascendMax;
+        fallSize = udpUpdate.fallSize;
+        isStill = udpUpdate.isStill;
+        isTryingToMove = udpUpdate.isTryingToMove;
+        startJumpSize = udpUpdate.startJumpSize;
+        maxFallSize = udpUpdate.maxFallSize;
+        gravity = udpUpdate.gravity;
+        totalFall = udpUpdate.totalFall;
+        completeFall = udpUpdate.completeFall;
+        totalHitPoints = udpUpdate.totalHitPoints;
+        hitPoints = udpUpdate.hitPoints;
+        totalArmorPoints = udpUpdate.totalArmorPoints;
+        armorPoints = udpUpdate.armorPoints;
+        knockBackX = udpUpdate.knockBackX;
+        isDead = udpUpdate.isDead;
+        touchDamage = udpUpdate.touchDamage;
+        meleeDamage = udpUpdate.meleeDamage;
+        meleeSpeed = udpUpdate.meleeSpeed;
+        mapXMin = udpUpdate.mapXMin;
+        mapXMax = udpUpdate.mapXMax;
+        groundLevel = udpUpdate.groundLevel;
+        isDirty = udpUpdate.isDirty;
+        playerDamage = udpUpdate.playerDamage;
+        placeableDamage = udpUpdate.placeableDamage;
+        level = udpUpdate.level;
     }
 
     private void readObject(ObjectInputStream aInputStream) throws Exception {

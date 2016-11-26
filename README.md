@@ -1,12 +1,14 @@
 epic-inventor
 =============
 
+11/26/2016 - UPDATE - found some newer files in the source repo and posted!
+
 An Indie, Side-scrolling, Action, RPG
 
 Created by:
 
 - Mike Weem (http://www.youtube.com/weemcast)
-- Forrest Hatfield (BlkStormy - https://twitter.com/BlkStormy)
+- Forrest Hatfield (BlkStormy - https://twitter.com/forresthatfield)
 - Brandon Williams
 
 http://www.epicinventor.com

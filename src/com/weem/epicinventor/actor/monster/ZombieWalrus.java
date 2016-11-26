@@ -16,9 +16,9 @@ public class ZombieWalrus extends Monster {
         displayName = "Zombie Walrus";
 
         monsterManager = mm;
-        
+
         difficultyFactor = 0.80f;
-        
+
         adjustHPForLevel();
 
         topOffset = 12;
@@ -35,7 +35,10 @@ public class ZombieWalrus extends Monster {
 
         dropChances.addDropChance("Tusk", 75.0f, 1, 2);
         dropChances.addDropChance("Skin", 75.0f, 2, 3);
- 
+        dropChances.addDropChance("WeemsDiceBag", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("ForrestsLaptop", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("BrandonsAbacus", 0.20f, 1, 1); //1 in 500 chance
+
         ai = new AI(registry, this);
         ai.clearGoals();
         ai.addGoal(AI.GoalType.ATTACK_PLAYER, "", (Rand.getRange(0, 1) + Rand.getFloat()));
@@ -47,24 +50,20 @@ public class ZombieWalrus extends Monster {
 
     @Override
     protected void updateImage() {
-        if (stateChanged) {
-            if (vertMoveMode == VertMoveMode.JUMPING) {
-                setImage("Monsters/" + name + "/Jumping");
-            } else if (vertMoveMode == VertMoveMode.FLYING) {
-                loopImage("Monsters/" + name + "/Flapping");
-            } else if (vertMoveMode == VertMoveMode.FALLING) {
-                loopImage("Monsters/" + name + "/Falling");
+        if (vertMoveMode == VertMoveMode.JUMPING) {
+            setImage("Monsters/" + name + "/Jumping");
+        } else if (vertMoveMode == VertMoveMode.FLYING) {
+            loopImage("Monsters/" + name + "/Flapping");
+        } else if (vertMoveMode == VertMoveMode.FALLING) {
+            loopImage("Monsters/" + name + "/Falling");
+        } else {
+            if (actionMode == ActionMode.ATTACKING) {
+                loopImage("Monsters/" + name + "/Attacking", 0.50);
+            } else if (isStill) {
+                setImage("Monsters/" + name + "/Standing");
             } else {
-                if(actionMode == ActionMode.ATTACKING) {
-                    loopImage("Monsters/" + name + "/Attacking", 0.50);
-                } else if (isStill) {
-                    setImage("Monsters/" + name + "/Standing");
-                } else {
-                    loopImage("Monsters/" + name + "/Walking");
-                }
+                loopImage("Monsters/" + name + "/Walking");
             }
-
-            stateChanged = false;
         }
     }
 }

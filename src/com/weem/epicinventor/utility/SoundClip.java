@@ -22,36 +22,36 @@ public class SoundClip implements LineListener {
 //                } else if(GameController.props.getProperty("os.name").contains("Linux") && GameController.props.getProperty("java.vm.vendor").contains("Oracle")) {
 //                    new PlayWave(filename).start();
 //                } else {
-                    AudioInputStream audioStream = createAudioStream(filename);
+                AudioInputStream audioStream = createAudioStream(filename);
 
-                    AudioFormat format = audioStream.getFormat();
+                AudioFormat format = audioStream.getFormat();
 
-                    DataLine.Info info = new DataLine.Info(Clip.class, format);
+                DataLine.Info info = new DataLine.Info(Clip.class, format);
 
-                    clip = (Clip) AudioSystem.getLine(info);
-                    clip.addLineListener(this);
-                    clip.open(audioStream);
+                clip = (Clip) AudioSystem.getLine(info);
+                clip.addLineListener(this);
+                clip.open(audioStream);
 
-                    if (clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-                        FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+                if (clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+                    FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
 
-                        if (gainControl != null) {
-                            float min = gainControl.getMinimum();
-                            float max = gainControl.getMaximum();
+                    if (gainControl != null) {
+                        float min = gainControl.getMinimum();
+                        float max = gainControl.getMaximum();
 
-                            float volume = Settings.volumeFX;
-                            volume *= 10f;
-                            volume /= 100f;
+                        float volume = Settings.volumeFX;
+                        volume *= 10f;
+                        volume /= 100f;
 
-                            float decibels = min + ((max - min) * volume);
+                        float decibels = min + ((max - min) * volume);
 
-                            gainControl.setValue(decibels); // Reduce volume by 10 decibels.
-                        }
+                        gainControl.setValue(decibels); // Reduce volume by 10 decibels.
                     }
+                }
 
-                    play();
+                play();
 
-                    wasHeard = true;
+                wasHeard = true;
 //                }
             } catch (Exception e) {
                 EIError.debugMsg("Problem with " + filename + ": " + e.getMessage(), EIError.ErrorLevel.Error);
@@ -67,33 +67,33 @@ public class SoundClip implements LineListener {
 //                } else if(GameController.props.getProperty("os.name").contains("Linux") && GameController.props.getProperty("java.vm.vendor").contains("Oracle")) {
 //                    new PlayWave(filename, volume).start();
 //                } else {
-                    AudioInputStream audioStream = createAudioStream(filename);
+                AudioInputStream audioStream = createAudioStream(filename);
 
-                    AudioFormat format = audioStream.getFormat();
+                AudioFormat format = audioStream.getFormat();
 
-                    DataLine.Info info = new DataLine.Info(Clip.class, format);
+                DataLine.Info info = new DataLine.Info(Clip.class, format);
 
-                    clip = (Clip) AudioSystem.getLine(info);
-                    clip.addLineListener(this);
-                    clip.open(audioStream);
+                clip = (Clip) AudioSystem.getLine(info);
+                clip.addLineListener(this);
+                clip.open(audioStream);
 
-                    if (clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-                        FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+                if (clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+                    FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
 
-                        if (gainControl != null) {
-                            float min = gainControl.getMinimum();
-                            float max = gainControl.getMaximum();
+                    if (gainControl != null) {
+                        float min = gainControl.getMinimum();
+                        float max = gainControl.getMaximum();
 
-                            volume *= 10f;
-                            volume /= 100f;
+                        volume *= 10f;
+                        volume /= 100f;
 
-                            float decibels = min + ((max - min) * volume);
+                        float decibels = min + ((max - min) * volume);
 
-                            gainControl.setValue(decibels); // Reduce volume by 10 decibels.
-                        }
+                        gainControl.setValue(decibels); // Reduce volume by 10 decibels.
                     }
-                    play();
-                    wasHeard = true;
+                }
+                play();
+                wasHeard = true;
 //                }
             } catch (Exception e) {
                 EIError.debugMsg("Problem with " + filename + ": " + e.getMessage(), EIError.ErrorLevel.Error);
@@ -118,66 +118,66 @@ public class SoundClip implements LineListener {
 //                        }
 //                    }
 //                } else {
-                    PlayerManager pm = registry.getPlayerManager();
-                    if (pm != null) {
-                        Player player = pm.getCurrentPlayer();
-                        if (player != null) {
-                            double distance = player.getCenterPoint().distance(p);
+                PlayerManager pm = registry.getPlayerManager();
+                if (pm != null) {
+                    Player player = pm.getCurrentPlayer();
+                    if (player != null) {
+                        double distance = player.getCenterPoint().distance(p);
 
-                            if (distance <= maxHearingDistance) {
-                                AudioInputStream audioStream = createAudioStream(filename);
+                        if (distance <= maxHearingDistance) {
+                            AudioInputStream audioStream = createAudioStream(filename);
 
-                                AudioFormat format = audioStream.getFormat();
+                            AudioFormat format = audioStream.getFormat();
 
-                                DataLine.Info info = new DataLine.Info(Clip.class, format);
+                            DataLine.Info info = new DataLine.Info(Clip.class, format);
 
-                                clip = (Clip) AudioSystem.getLine(info);
+                            clip = (Clip) AudioSystem.getLine(info);
 
-                                clip.addLineListener(this);
-                                clip.open(audioStream);
+                            clip.addLineListener(this);
+                            clip.open(audioStream);
 
-                                if (clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-                                    FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+                            if (clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+                                FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
 
-                                    if (gainControl != null) {
-                                        float min = gainControl.getMinimum();
-                                        float max = gainControl.getMaximum();
+                                if (gainControl != null) {
+                                    float min = gainControl.getMinimum();
+                                    float max = gainControl.getMaximum();
 
-                                        float volume = Settings.volumeFX;
-                                        volume *= 10f;
-                                        volume /= 100f;
-                                        
-                                        float percentage = 1.0f;
+                                    float volume = Settings.volumeFX;
+                                    volume *= 10f;
+                                    volume /= 100f;
 
-                                        if(distance > 0) {
-                                            if(distance > maxHearingDistance) {
-                                                percentage = 0f;
-                                            } else {
-                                                percentage = (((float) maxHearingDistance - (float) distance) / (float) maxHearingDistance);  
-                                            }
-                                            
+                                    float percentage = 1.0f;
+
+                                    if (distance > 0) {
+                                        if (distance > maxHearingDistance) {
+                                            percentage = 0f;
+                                        } else {
+                                            percentage = (((float) maxHearingDistance - (float) distance) / (float) maxHearingDistance);
                                         }
 
-                                        percentage *= volume;
-
-                                        float decibels = min / 2 + ((max - min) / 2 * percentage);
-
-                                        gainControl.setValue(decibels); // Reduce volume by 10 decibels.
                                     }
-                                }
-                                play();
 
-                                wasHeard = true;
+                                    percentage *= volume;
+
+                                    float decibels = min / 2 + ((max - min) / 2 * percentage);
+
+                                    gainControl.setValue(decibels); // Reduce volume by 10 decibels.
+                                }
                             }
+                            play();
+
+                            wasHeard = true;
                         }
                     }
+                }
 //                }
             } catch (Exception e) {
                 EIError.debugMsg("Problem with " + filename + ": " + e.getMessage(), EIError.ErrorLevel.Error);
             }
         }
     }
-    
+
     public boolean getWasHeard() {
         return wasHeard;
     }
@@ -186,28 +186,20 @@ public class SoundClip implements LineListener {
         isLooping = l;
     }
 
-    /*private String getFinalSound(String s) {
-    int min = 0;
-    int max = 0;
-    String finalName = s;
-    
-    for (int i = 1; i <= 9; i++) {
-    if (sounds.containsKey(s + i)) {
-    if (min == 0) {
-    min = 1;
+    /*
+     * private String getFinalSound(String s) { int min = 0; int max = 0; String
+     * finalName = s;
+     *
+     * for (int i = 1; i <= 9; i++) { if (sounds.containsKey(s + i)) { if (min
+     * == 0) { min = 1; } max = i; } }
+     *
+     * if (min >= 1) { finalName = s + Rand.getRange(min, max); }
+     *
+     * System.out.println(finalName);
+     *
+     * return finalName;
     }
-    max = i;
-    }
-    }
-    
-    if (min >= 1) {
-    finalName = s + Rand.getRange(min, max);
-    }
-    
-    System.out.println(finalName);
-    
-    return finalName;
-    }*/
+     */
     private AudioInputStream createAudioStream(String fileName) {
         AudioInputStream audioStream = null;
 
@@ -250,9 +242,10 @@ public class SoundClip implements LineListener {
 
     public void stop() {
         if (clip != null) {
-            //clip.stop();
-            clip.setFramePosition(0);
+            clip.stop();
+            clip.flush();
             clip.close();
+            clip = null;
         }
     }
 }

@@ -1,11 +1,13 @@
 //<name> <create qty> <max stack> <category> <type> <tech lvl> <item1> <item1 qty> <item2> <item2 qty> <item3> <item3 qty> <item4> <item4 qty> <skill1> <skill2> <workbench> <xp multiplier> <description>
 
 //Resources
+BrandonsAbacus 1 1 None None 0 None 0 None 0 None 0 None 0 None None None 25.0 Brandon's Abacus: "Essential tool for doing the maths!" (Rare developer item drop - collect all 3)
 Copper 1 50 None None 0 None 0 None 0 None 0 None 0 None None None 0.15 Copper: The lowest grade metal - used in crafting
 Diamond 1 5 None None 0 None 0 None 0 None 0 None 0 None None None 1.0 Diamond: Highest grade gem - used in crafting
 Emerald 1 5 None None 0 None 0 None 0 None 0 None 0 None None None 0.25 Emerald: Low grade gem, better than Sapphire - used in crafting (can be mined or uncommonly dropped from Green Orcs)
+ForrestsLaptop 1 1 None None 0 None 0 None 0 None 0 None 0 None None None 25.0 Forrest's Laptop: "Never leave home without it!" (Rare developer item drop - collect all 3)
 Gold 1 50 None None 0 None 0 None 0 None 0 None 0 None None None 0.50 Gold: High grade metal, better than Silver - used in crafting
-Idol 1 20 None None 0 None 0 None 0 None 0 None 0 None None None 0.25 Idol: An idol crafted by a lost civilization... made recently...
+Idol 1 20 None Usable 0 None 0 None 0 None 0 None 0 None None None 0.25 Idol: An idol crafted by a lost civilization... made recently...
 Iron 1 50 None None 0 None 0 None 0 None 0 None 0 None None None 0.20 Iron: Low grade metal, better than Copper - used in crafting
 Plant 1 1 None None 0 None 0 None 0 None 0 None 0 None None None 0.0 Plant: Used in many items when crafting
 Pig 1 1 None Animal 0 None 0 None 0 None 0 None 0 None None None 0.05 Pig: Once collected, click anywhere on the screen while the pig is selected to let it go
@@ -15,6 +17,7 @@ Sapphire 1 5 None None 0 None 0 None 0 None 0 None 0 None None None 0.25 Sapphir
 Silver 1 50 None None 0 None 0 None 0 None 0 None 0 None None None 0.25 Silver: Middle grade metal, better than Iron - used in crafting
 Stone 1 100 None None 0 None 0 None 0 None 0 None 0 None None None 0.10 Stone: Used in many items when crafting
 Tulip 1 1 None None 0 None 0 None 0 None 0 None 0 None None None 1.0 Tulip: Used in food preparation
+WeemsDiceBag 1 1 None None 0 None 0 None 0 None 0 None 0 None None None 25.0 Weem's Dice Bag: "This is how I roll!" (Rare developer item drop - collect all 3)
 Wood 1 100 None None 0 None 0 None 0 None 0 None 0 None None None 0.05 Wood: Used in many items when crafting
 
 //Placeables
@@ -222,6 +225,17 @@ CrossBow 1 1 Item Weapon 1 WoodBlock 2 Rope 1 None 0 None 0 Woodwork1 None WorkB
 HandCannon 1 1 Item Weapon 1 IronRod 2 GunPowder 1 WoodBlock 1 None 0 Woodwork1 None WorkBench 3.0 Hand Cannon: High grade ranged weapon
 FlameCannon 1 1 Item Weapon 1 FireGland 1 PlatinumTube 3 GoldGear 2 None 0 Woodwork1 None Forge 3.0 Flame Cannon: Spray a fiery flame of death at your enemies
 SlingShot 1 1 Item Weapon 1 WoodPiece 2 Pebble 5 None 0 None 0 Woodwork1 None None 0.10 Sling Shot: Lowest grade ranged weapon
+
+//Locators
+CopperLocator 1 1 Item Usable 1 Compass 1 Copper 1 None 0 None 0 None None WorkBench 0.75 Copper Locator: Finding Copper has never been easier!
+DiamondLocator 1 1 Item Usable 1 Compass 1 Diamond 1 None 0 None 0 None None WorkBench 0.75 Diamond Locator: Finding Diamonds has never been easier!
+EmeraldLocator 1 1 Item Usable 1 Compass 1 Emerald 1 None 0 None 0 None None WorkBench 0.75 Emerald Locator: Finding Emeralds has never been easier!
+GoldLocator 1 1 Item Usable 1 Compass 1 Gold 1 None 0 None 0 None None WorkBench 0.75 Gold Locator: Finding Gold has never been easier!
+IronLocator 1 1 Item Usable 1 Compass 1 Iron 1 None 0 None 0 None None WorkBench 0.75 Iron Locator: Finding Iron has never been easier!
+PlatinumLocator 1 1 Item Usable 1 Compass 1 Platinum 1 None 0 None 0 None None WorkBench 0.75 Platinum Locator: Finding Platinum has never been easier!
+RubyLocator 1 1 Item Usable 1 Compass 1 Ruby 1 None 0 None 0 None None WorkBench 0.75 Ruby Locator: Finding Rubies has never been easier!
+SapphireLocator 1 1 Item Usable 1 Compass 1 Sapphire 1 None 0 None 0 None None WorkBench 0.75 Sapphire Locator: Finding Sapphires has never been easier!
+SilverLocator 1 1 Item Usable 1 Compass 1 Silver 1 None 0 None 0 None None WorkBench 0.75 Silver Locator: Finding Silver has never been easier!
 
 //Other
 BrokenMirror 1 1 Item Usable 1 Diamond 1 PlatinumGear 1 SilverPanel 1 None 0 None None WorkBench 0.50 Broken Mirror: If you gaze into it, you'll be taken far, far away...

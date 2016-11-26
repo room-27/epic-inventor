@@ -62,12 +62,12 @@ public abstract class PlayerContainer extends Building implements Serializable {
     }
 
     @Override
-    public boolean setDestroying(boolean destroying) {
+    public boolean setDestroying(Player p, boolean destroying) {
         if (destroying && inventory.getUsedSlots() > 0) {
-            registry.showMessage("Error", "You must emtpy out this container before destroying it");
+            registry.showMessage("Error", "You must empty out this container before destroying it");
             return false;
         }
-        return super.setDestroying(destroying);
+        return super.setDestroying(p, destroying);
     }
 
     @Override
@@ -124,10 +124,8 @@ public abstract class PlayerContainer extends Building implements Serializable {
         int qtyLeft = inventory.addToInventory(slot, name, qty);
         if (qtyLeft == 0) {
             if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.NONE && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     UpdatePlaceable up = new UpdatePlaceable(this.getId());
-                    up.hitPoints = this.getHitPoints();
-                    up.totalHitPoints = this.getTotalHitPoints();
                     up.inventory = inventory;
                     up.action = "InventoryUpdate";
                     registry.getNetworkThread().sendData(up);
@@ -150,10 +148,8 @@ public abstract class PlayerContainer extends Building implements Serializable {
         int qtyLeft = inventory.addToInventory(slot, name, qty, level);
         if (qtyLeft == 0) {
             if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.NONE && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     UpdatePlaceable up = new UpdatePlaceable(this.getId());
-                    up.hitPoints = this.getHitPoints();
-                    up.totalHitPoints = this.getTotalHitPoints();
                     up.inventory = inventory;
                     up.action = "InventoryUpdate";
                     registry.getNetworkThread().sendData(up);
@@ -175,10 +171,8 @@ public abstract class PlayerContainer extends Building implements Serializable {
     public void deleteInventory(int slot, int qty) {
         inventory.deleteInventory(slot, qty);
         if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlaceable up = new UpdatePlaceable(this.getId());
-                up.hitPoints = this.getHitPoints();
-                up.totalHitPoints = this.getTotalHitPoints();
                 up.inventory = inventory;
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
@@ -189,10 +183,8 @@ public abstract class PlayerContainer extends Building implements Serializable {
     public void swapInventory(int from, int to) {
         inventory.swapInventoryLocations(from, to);
         if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlaceable up = new UpdatePlaceable(this.getId());
-                up.hitPoints = this.getHitPoints();
-                up.totalHitPoints = this.getTotalHitPoints();
                 up.inventory = inventory;
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);

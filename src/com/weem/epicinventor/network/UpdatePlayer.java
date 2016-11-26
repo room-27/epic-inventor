@@ -11,9 +11,6 @@ public class UpdatePlayer implements Serializable {
     protected static final long serialVersionUID = 10000L;
     public String id = "";
     public String name = "";
-    public int mapX;
-    public int mapY;
-    public Player.VertMoveMode vertMoveMode;
     public String action = "None";
     public int dataInt;
     public Actor actor;

@@ -10,8 +10,6 @@ public class UpdatePlaceable implements Serializable {
     
     protected static final long serialVersionUID = 10000L;
     public String id = "";
-    public int hitPoints;
-    public int totalHitPoints;
     public int mapX;
     public int mapY;
     public Monster source;

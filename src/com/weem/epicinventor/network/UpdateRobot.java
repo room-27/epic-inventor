@@ -10,8 +10,6 @@ public class UpdateRobot implements Serializable {
     protected static final long serialVersionUID = 10000L;
     public String playerId = "";
     public String id = "";
-    public int mapX;
-    public int mapY;
     public String action = "None";
     public int dataInt;
     public Actor actor;

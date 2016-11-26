@@ -4,6 +4,7 @@ import com.weem.epicinventor.*;
 import com.weem.epicinventor.ai.*;
 import com.weem.epicinventor.inventory.*;
 import com.weem.epicinventor.actor.monster.*;
+import com.weem.epicinventor.actor.oobaboo.*;
 import com.weem.epicinventor.network.*;
 import com.weem.epicinventor.placeable.*;
 import com.weem.epicinventor.projectile.*;
@@ -31,7 +32,7 @@ public class PlayerManager extends Manager {
 
         p = new Player(this, registry, "Player/Standing", 226);
         players.put(p.getId(), p);
-        currentPlayer = p;
+        setCurrentPlayer(p);
     }
 
     public void clearPlayers() {
@@ -41,17 +42,23 @@ public class PlayerManager extends Manager {
     }
 
     public void giveXP(Monster m) {
-        Player player = null;
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            Player player = null;
 
-        try {
-            for (String key : players.keySet()) {
-                player = (Player) players.get(key);
-                player.addXP(m.getXPByPlayer(player));
+            try {
+                for (String key : players.keySet()) {
+                    player = (Player) players.get(key);
+                    player.addXP(m.getXPByPlayer(player));
+                }
+            } catch (ConcurrentModificationException concEx) {
+                //another thread was trying to modify players while iterating
+                //we'll continue and the new item can be grabbed on the next update
             }
-        } catch (ConcurrentModificationException concEx) {
-            //another thread was trying to modify players while iterating
-            //we'll continue and the new item can be grabbed on the next update
         }
+    }
+
+    public void showOobabooHUD() {
+        gameController.showOobabooHUD();
     }
 
     public void registerPlayer(Player p) {
@@ -59,6 +66,13 @@ public class PlayerManager extends Manager {
             players.put(p.getId(), p);
             if (players.size() == 1) {
                 setCurrentPlayer(p);
+            }
+            if (p != null) {
+                if (gameController.multiplayerMode != gameController.multiplayerMode.CLIENT && registry.getNetworkThread() != null) {
+                    if (registry.getNetworkThread().readyForUpdates()) {
+                        registry.getNetworkThread().sendData(p);
+                    }
+                }
             }
         }
     }
@@ -74,6 +88,17 @@ public class PlayerManager extends Manager {
 
     public void removePlayer(String playerId) {
         if (players.containsKey(playerId)) {
+            Player p = players.get(playerId);
+            if (p != null) {
+                if (gameController.multiplayerMode != gameController.multiplayerMode.CLIENT && registry.getNetworkThread() != null) {
+                    if (registry.getNetworkThread().readyForUpdates()) {
+                        UpdatePlayer up = new UpdatePlayer(p.getId());
+                        up.name = p.getName();
+                        up.action = "Remove";
+                        registry.getNetworkThread().sendData(up);
+                    }
+                }
+            }
             players.remove(playerId);
         }
     }
@@ -161,47 +186,32 @@ public class PlayerManager extends Manager {
     }
 
     public void playerMoveLeft() {
-        currentPlayer.moveLeft();
-        if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
-                UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
-                up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
-                up.action = "MoveLeft";
-                registry.getNetworkThread().sendData(up);
-            }
+        playerMoveLeft(currentPlayer);
+    }
+
+    public void playerMoveLeft(Player p) {
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            p.moveLeft();
         }
     }
 
     public void playerMoveRight() {
-        currentPlayer.moveRight();
-        if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
-                UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
-                up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
-                up.action = "MoveRight";
-                registry.getNetworkThread().sendData(up);
-            }
+        playerMoveRight(currentPlayer);
+    }
+
+    public void playerMoveRight(Player p) {
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            p.moveRight();
         }
     }
 
     public void playerStopMove() {
-        currentPlayer.stopMove();
-        if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
-                UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
-                up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
-                up.action = "StopMove";
-                registry.getNetworkThread().sendData(up);
-            }
+        playerStopMove(currentPlayer);
+    }
+
+    public void playerStopMove(Player p) {
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            p.stopMove();
         }
     }
 
@@ -210,84 +220,41 @@ public class PlayerManager extends Manager {
     }
 
     public void playerStartGather(String rt) {
-        currentPlayer.startGather(rt);
-        if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
-                UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
-                up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.action = "StartGather";
-                up.dataString = rt;
-                registry.getNetworkThread().sendData(up);
-            }
-        }
+        playerStartGather(currentPlayer, rt);
+    }
+
+    public void playerStartGather(Player p, String rt) {
+        p.startGather(rt);
     }
 
     public boolean playerGoInsideRobot() {
         boolean ret = currentPlayer.setInsideRobot(true);
-        if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
-                UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
-                up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
-                up.action = "GoInsideRobot";
-                registry.getNetworkThread().sendData(up);
-            }
-        }
 
         return ret;
     }
 
     public boolean isPlayerInsideRobot() {
-        return currentPlayer.getInsideRobot();
+        return isPlayerInsideRobot(currentPlayer);
+    }
+
+    public boolean isPlayerInsideRobot(Player p) {
+        return p.getInsideRobot();
     }
 
     public void playerGetOutOfRobot() {
         currentPlayer.setInsideRobot(false);
-        if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
-                UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
-                up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
-                up.action = "GetOutOfRobot";
-                registry.getNetworkThread().sendData(up);
-            }
-        }
     }
 
     public boolean playerToggleInsideRobot() {
+        return playerToggleInsideRobot(currentPlayer);
+    }
+
+    public boolean playerToggleInsideRobot(Player p) {
         boolean ret;
-        if (currentPlayer.getInsideRobot()) {
-            ret = currentPlayer.setInsideRobot(false);
-            if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
-                    UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
-                    up.name = currentPlayer.getName();
-                    up.mapX = currentPlayer.getMapX();
-                    up.mapY = currentPlayer.getMapY();
-                    up.vertMoveMode = currentPlayer.getVertMoveMode();
-                    up.action = "GetOutOfRobot";
-                    registry.getNetworkThread().sendData(up);
-                }
-            }
+        if (p.getInsideRobot()) {
+            ret = p.setInsideRobot(false);
         } else {
-            ret = currentPlayer.setInsideRobot(true);
-            if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
-                    UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
-                    up.name = currentPlayer.getName();
-                    up.mapX = currentPlayer.getMapX();
-                    up.mapY = currentPlayer.getMapY();
-                    up.vertMoveMode = currentPlayer.getVertMoveMode();
-                    up.action = "GoInsideRobot";
-                    registry.getNetworkThread().sendData(up);
-                }
-            }
+            ret = p.setInsideRobot(true);
         }
 
         return ret;
@@ -296,12 +263,9 @@ public class PlayerManager extends Manager {
     public void playerEquipHead(String armorName, int level) {
         currentPlayer.setArmorTypeHead(armorName, level);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
                 up.inventory = currentPlayer.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
@@ -312,12 +276,9 @@ public class PlayerManager extends Manager {
     public void playerEquipChest(String armorName, int level) {
         currentPlayer.setArmorTypeChest(armorName, level);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
                 up.inventory = currentPlayer.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
@@ -328,12 +289,9 @@ public class PlayerManager extends Manager {
     public void playerEquipLegs(String armorName, int level) {
         currentPlayer.setArmorTypeLegs(armorName, level);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
                 up.inventory = currentPlayer.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
@@ -344,12 +302,9 @@ public class PlayerManager extends Manager {
     public void playerEquipFeet(String armorName, int level) {
         currentPlayer.setArmorTypeFeet(armorName, level);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
                 up.inventory = currentPlayer.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
@@ -360,12 +315,9 @@ public class PlayerManager extends Manager {
     public void handleClick(Point clickPoint) {
         currentPlayer.handleClick(clickPoint);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
                 up.action = "HandleClick";
                 up.dataPoint = clickPoint;
                 registry.getNetworkThread().sendData(up);
@@ -376,12 +328,9 @@ public class PlayerManager extends Manager {
     public void handleRightClick() {
         currentPlayer.handleRightClick();
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
                 up.action = "HandleRightClick";
                 registry.getNetworkThread().sendData(up);
             }
@@ -391,12 +340,9 @@ public class PlayerManager extends Manager {
     public void handleReleased(Point clickPoint) {
         currentPlayer.handleReleased(clickPoint);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
                 up.action = "HandleReleased";
                 up.dataPoint = clickPoint;
                 registry.getNetworkThread().sendData(up);
@@ -416,12 +362,9 @@ public class PlayerManager extends Manager {
     public int playerAddItem(String name, int qty) {
         int ret = playerAddItem(0, name, qty);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
                 up.inventory = currentPlayer.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
@@ -434,12 +377,9 @@ public class PlayerManager extends Manager {
     public int playerAddItem(Player p, String name, int qty) {
         int ret = playerAddItem(p, 0, name, qty);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(p.getId());
                 up.name = p.getName();
-                up.mapX = p.getMapX();
-                up.mapY = p.getMapY();
-                up.vertMoveMode = p.getVertMoveMode();
                 up.inventory = p.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
@@ -452,17 +392,15 @@ public class PlayerManager extends Manager {
     public int playerAddItem(int slot, String name, int qty) {
         int ret = currentPlayer.playerAddItem(slot, name, qty);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
                 up.inventory = currentPlayer.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
             }
         }
+        registry.getHUDManager().updateMasterHUD();
 
         return ret;
     }
@@ -470,12 +408,9 @@ public class PlayerManager extends Manager {
     public int playerAddItem(Player p, int slot, String name, int qty) {
         int ret = p.playerAddItem(slot, name, qty);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(p.getId());
                 up.name = p.getName();
-                up.mapX = p.getMapX();
-                up.mapY = p.getMapY();
-                up.vertMoveMode = p.getVertMoveMode();
                 up.inventory = p.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
@@ -488,17 +423,15 @@ public class PlayerManager extends Manager {
     public int playerAddItem(int slot, String name, int qty, int level) {
         int ret = currentPlayer.playerAddItem(slot, name, qty, level);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
                 up.inventory = currentPlayer.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
             }
         }
+        registry.getHUDManager().updateMasterHUD();
 
         return ret;
     }
@@ -506,12 +439,9 @@ public class PlayerManager extends Manager {
     public int playerAddItem(Player p, int slot, String name, int qty, int level) {
         int ret = p.playerAddItem(slot, name, qty, level);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(p.getId());
                 up.name = p.getName();
-                up.mapX = p.getMapX();
-                up.mapY = p.getMapY();
-                up.vertMoveMode = p.getVertMoveMode();
                 up.inventory = p.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
@@ -583,12 +513,9 @@ public class PlayerManager extends Manager {
     public void playerDeleteInventory(int slot, int qty, boolean giveXP) {
         currentPlayer.playerDeleteInventory(slot, qty, giveXP);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
                 up.inventory = currentPlayer.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
@@ -599,12 +526,9 @@ public class PlayerManager extends Manager {
     public void setPlayerSlotQuantity(int slot, int qty) {
         currentPlayer.setPlayerSlotQuantity(slot, qty);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
                 up.inventory = currentPlayer.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
@@ -615,12 +539,9 @@ public class PlayerManager extends Manager {
     public void setPlayerSelectedItem(int i) {
         currentPlayer.setPlayerSelectedItem(i);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
                 up.action = "SetSelectedItem";
                 up.dataInt = i;
                 registry.getNetworkThread().sendData(up);
@@ -654,28 +575,35 @@ public class PlayerManager extends Manager {
     public void playerSwapInventory(int from, int to) {
         currentPlayer.playerSwapInventory(from, to);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
                 up.inventory = currentPlayer.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
             }
         }
     }
-
+    
+    public void playerStopLoopingSound() {
+        currentPlayer.playerStopLoopingSound();
+    }
+    
     public void playerEquipFromInventory(int slot) {
         currentPlayer.playerEquipFromInventory(slot);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
+                up.action = "Equip";
+                up.dataInt = slot;
+                registry.getNetworkThread().sendData(up);
+            }
+        }
+        if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
+            if (registry.getNetworkThread().readyForUpdates()) {
+                UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
+                up.name = currentPlayer.getName();
                 up.inventory = currentPlayer.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
@@ -683,19 +611,25 @@ public class PlayerManager extends Manager {
         }
     }
 
-    public void playerDied() {
-        gameController.playerDied();
+    public void playerDied(Rectangle area) {
+        gameController.playerDied(area);
     }
 
     public void playerUnEquipToInventory(String equipmentType, int to) {
         currentPlayer.playerUnEquipToInventory(equipmentType, to);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
+                up.action = "UnEquip";
+                up.dataString = equipmentType;
+                registry.getNetworkThread().sendData(up);
+            }
+        }
+        if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
+            if (registry.getNetworkThread().readyForUpdates()) {
+                UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
+                up.name = currentPlayer.getName();
                 up.inventory = currentPlayer.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
@@ -706,12 +640,18 @@ public class PlayerManager extends Manager {
     public void playerUnEquipToDelete(String equipmentType) {
         currentPlayer.playerUnEquipToDelete(equipmentType);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
+                up.action = "UnEquip";
+                up.dataString = equipmentType;
+                registry.getNetworkThread().sendData(up);
+            }
+        }
+        if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
+            if (registry.getNetworkThread().readyForUpdates()) {
+                UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
+                up.name = currentPlayer.getName();
                 up.inventory = currentPlayer.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
@@ -722,12 +662,9 @@ public class PlayerManager extends Manager {
     public void playerCraftItem(String itemType) {
         currentPlayer.playerCraftItem(itemType);
         if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
                 up.inventory = currentPlayer.getInventory();
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
@@ -740,17 +677,12 @@ public class PlayerManager extends Manager {
     }
 
     public void robotToggleActivated() {
-        currentPlayer.robotToggleActivated();
-        if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
-                UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
-                up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
-                up.action = "RobotToggleActivated";
-                registry.getNetworkThread().sendData(up);
-            }
+        robotToggleActivated(currentPlayer);
+    }
+
+    public void robotToggleActivated(Player p) {
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            p.robotToggleActivated();
         }
     }
 
@@ -763,65 +695,58 @@ public class PlayerManager extends Manager {
     }
 
     public void playerStopGather() {
-        currentPlayer.stopGather();
-        if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
-                UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
-                up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
-                up.action = "StopGather";
-                registry.getNetworkThread().sendData(up);
-            }
+        playerStopGather(currentPlayer);
+    }
+
+    public void playerStopGather(Player p) {
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            p.stopGather();
         }
     }
 
     public void playerStopJump() {
-        currentPlayer.stopJump();
-        currentPlayer.stopAscend();
-        if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
-                UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
-                up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
-                up.action = "StopJump";
-                registry.getNetworkThread().sendData(up);
-            }
+        playerStopJump(currentPlayer);
+    }
+
+    public void playerStopJump(Player p) {
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            p.stopJump();
+            p.stopAscend();
         }
     }
 
     public void playerJump() {
-        currentPlayer.jump();
-        if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
-                UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
-                up.name = currentPlayer.getName();
-                up.mapX = currentPlayer.getMapX();
-                up.mapY = currentPlayer.getMapY();
-                up.vertMoveMode = currentPlayer.getVertMoveMode();
-                up.action = "Jump";
-                registry.getNetworkThread().sendData(up);
-            }
+        playerJump(currentPlayer);
+    }
+
+    public void playerJump(Player p) {
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            p.jump();
         }
     }
 
     public boolean isPlayerPerformingAction() {
-        return currentPlayer.isPlayerPerformingAction();
+        return isPlayerPerformingAction(currentPlayer);
+    }
+
+    public boolean isPlayerPerformingAction(Player p) {
+        return p.isPlayerPerformingAction();
     }
 
     public boolean isPlayerMoving() {
-        return currentPlayer.isPlayerMoving();
+        return isPlayerMoving(currentPlayer);
+    }
+
+    public boolean isPlayerMoving(Player p) {
+        return p.isPlayerMoving();
     }
 
     public Placeable loadPlaceable(String n, int x, int y) {
         return gameController.loadPlaceable(n, x, y);
     }
 
-    public void cancelPlaceable() {
-        gameController.cancelPlaceable();
+    public void cancelPlaceable(Player p) {
+        gameController.cancelPlaceable(p);
     }
 
     @Override
@@ -833,7 +758,7 @@ public class PlayerManager extends Manager {
             if (!gameController.isIdInGroup(standingBlocks[i], "None")) {
                 allNull = false;
             }
-            if (!(gameController.isIdInGroup(standingBlocks[i], "None") || gameController.isIdInGroup(standingBlocks[i], "Town"))) {
+            if (!(gameController.isIdInGroup(standingBlocks[i], "Town"))) {
                 ret = false;
             }
         }
@@ -847,8 +772,8 @@ public class PlayerManager extends Manager {
         return gameController.getTownStartEnd(currentPlayer.getCenterPoint().x, currentPlayer.getMapY());
     }
 
-    public Damage getMonsterTouchDamage(Rectangle r) {
-        return gameController.getMonsterTouchDamage(r);
+    public Damage getMonsterTouchDamage(Rectangle r, int x) {
+        return gameController.getMonsterTouchDamage(r, x);
     }
 
     public Point getCenterPoint() {
@@ -863,19 +788,6 @@ public class PlayerManager extends Manager {
                 if (p != null) {
                     if (p.getVertMoveMode() == Actor.VertMoveMode.NOT_JUMPING) {
                         p.setStatusStun(true, duration);
-                        if (gameController.multiplayerMode == gameController.multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                            if (registry.getNetworkThread().readyForUpdates) {
-                                UpdatePlayer up = new UpdatePlayer(p.getId());
-                                up.name = p.getName();
-                                up.mapX = p.getMapX();
-                                up.mapY = p.getMapY();
-                                up.vertMoveMode = p.getVertMoveMode();
-                                up.dataBoolean = true;
-                                up.dataLong = duration;
-                                up.action = "SetStun";
-                                registry.getNetworkThread().sendData(up);
-                            }
-                        }
                     }
                 }
             }
@@ -892,9 +804,8 @@ public class PlayerManager extends Manager {
             if (currentPlayer.getCameraReturning()) {
                 boolean xGood = false;
 
-                if(currentPlayer.cameraMoveSize < 350) {
-                    if(currentPlayer.cameraMoveSize == 0)
-                    {
+                if (currentPlayer.cameraMoveSize < 350) {
+                    if (currentPlayer.cameraMoveSize == 0) {
                         currentPlayer.cameraMoveSize = 0.25;
                     }
                     currentPlayer.cameraMoveSize *= 1.05;
@@ -923,7 +834,7 @@ public class PlayerManager extends Manager {
                         currentPlayer.setCameraReturning(false);
                     }
                 }
-                
+
                 centerCameraOnPoint(new Point((int) currentPlayer.cameraX, (int) currentPlayer.cameraY));
             } else {
                 centerCameraOnPoint(new Point(currentPlayer.mapX, currentPlayer.mapY));
@@ -947,6 +858,7 @@ public class PlayerManager extends Manager {
             //we'll continue and the new item can be grabbed on the next update
         }
 
+        //need to run this after the "smoothing" code is ran, or perhaps queue up toe udp updates and only process 1 per local update?
         setCamera();
     }
 
@@ -967,23 +879,134 @@ public class PlayerManager extends Manager {
         }
     }
 
+    public void processRobotUpdateUDP(UDPRobot up) {
+        try {
+            for (String key : players.keySet()) {
+                Player p = (Player) players.get(key);
+                if (p != null) {
+                    Robot r = p.getRobot();
+                    if (r != null) {
+                        if (r.getId().equals(up.id)) {
+                            r.processUpdate(up);
+                            return;
+                        }
+                    }
+                }
+            }
+        } catch (ConcurrentModificationException concEx) {
+            //another thread was trying to modify players while iterating
+            //we'll continue and the new item can be grabbed on the next update
+        }
+    }
+
+    public void assignOobaboo(Oobaboo o) {
+        if (o != null) {
+            Player p = this.getPlayerById(o.getPlayerID());
+            if (p != null) {
+                p.setOobaboo(o);
+            }
+        }
+    }
+
+    public void processOobabooUpdateUDP(UDPOobaboo uo) {
+        try {
+            for (String key : players.keySet()) {
+                Player p = (Player) players.get(key);
+                if (p != null) {
+                    Oobaboo o = p.getOobaboo();
+                    if (o != null) {
+                        if (o.getId().equals(uo.id)) {
+                            o.processUpdate(uo);
+                            return;
+                        }
+                    }
+                }
+            }
+        } catch (ConcurrentModificationException concEx) {
+            //another thread was trying to modify players while iterating
+            //we'll continue and the new item can be grabbed on the next update
+        }
+    }
+
+    public void processPlayerUpdateUDP(UDPPlayer up) {
+        if (up != null) {
+            if (players.containsKey(up.id)) {
+                Player player = players.get(up.id);
+                if (player != null) {
+                    player.processUpdate(up);
+                }
+            }
+        }
+    }
+
+    public void processKeysUpdateUDP(UDPKeys uk) {
+        if (uk != null) {
+            if (players.containsKey(uk.id)) {
+                Player player = players.get(uk.id);
+                if (player != null) {
+                    if (player.keyState == null) {
+                        player.keyState = uk;
+                    } else {
+                        if (uk.keyLeftPressed != player.keyState.keyLeftPressed) {
+                            if (uk.keyLeftPressed) {
+                                stopActions(player);
+                                playerMoveLeft(player);
+                            } else {
+                                playerStopMove(player);
+                            }
+                        }
+                        if (uk.keyRightPressed != player.keyState.keyRightPressed) {
+                            if (uk.keyRightPressed) {
+                                stopActions(player);
+                                playerMoveRight(player);
+                            } else {
+                                playerStopMove(player);
+                            }
+                        }
+                        if (uk.keySpacePressed != player.keyState.keySpacePressed) {
+                            if (uk.keySpacePressed) {
+                                stopActions(player);
+                                playerJump(player);
+                            } else {
+                                playerStopJump(player);
+                            }
+                        }
+                        if (uk.keyGatherPressed != player.keyState.keyGatherPressed) {
+                            if (uk.keyGatherPressed) {
+                                stopActions(player);
+                                gameController.startGather(player);
+                            } else {
+                                stopActions(player);
+                            }
+                        }
+                        if (uk.keyRobotPressed != player.keyState.keyRobotPressed) {
+                            if (uk.keyRobotPressed) {
+                                robotToggleActivated(player);
+                            }
+                        }
+                        player.keyState = uk;
+                    }
+                }
+            }
+        }
+    }
+
     public void processPlayerUpdate(UpdatePlayer up) {
         if (up != null) {
             if (players.containsKey(up.id)) {
                 Player player = players.get(up.id);
                 if (player != null) {
-                    EIError.debugMsg("Setting " + up.name + " to " + up.mapX + ":" + up.mapY + ", Action: " + up.action);
-                    player.setPosition(up.mapX, up.mapY);
-                    player.setVertMoveMode(up.vertMoveMode);
+                    EIError.debugMsg("Setting " + up.name + " Action: " + up.action);
                     if (up.action.equals("ApplyDamage")) {
                         player.applyDamage(up.dataInt, up.actor);
+                    } else if (up.action.equals("AddXP")) {
+                        SoundClip cl = new SoundClip("Player/Good");
+                        player.addXP(up.dataInt);
                     } else if (up.action.equals("CollectedResource")) {
                         Resource resource = getResourceById(up.dataString);
                         registry.getResourceManager().resourceDoneCollecting(player, resource);
-                    } else if (up.action.equals("GetOutOfRobot")) {
-                        player.setInsideRobot(false);
-                    } else if (up.action.equals("GoInsideRobot")) {
-                        player.setInsideRobot(true);
+                    } else if (up.action.equals("Equip")) {
+                        player.playerEquipFromInventory(up.dataInt);
                     } else if (up.action.equals("HandleClick")) {
                         player.handleClick(up.dataPoint);
                     } else if (up.action.equals("HandleRightClick")) {
@@ -1001,28 +1024,14 @@ public class PlayerManager extends Manager {
                         }
 
                         player.setInventory(i);
-                    } else if (up.action.equals("Jump")) {
-                        player.jump();
-                    } else if (up.action.equals("MoveLeft")) {
-                        player.moveLeft();
-                    } else if (up.action.equals("MoveRight")) {
-                        player.moveRight();
-                    } else if (up.action.equals("RobotToggleActivated")) {
-                        player.robotToggleActivated();
                     } else if (up.action.equals("ScrollQuickBar")) {
                         player.scrollQuickBar(up.dataInt);
                     } else if (up.action.equals("SetSelectedItem")) {
                         player.setPlayerSelectedItem(up.dataInt);
-                    } else if (up.action.equals("SetStun")) {
-                        player.setStatusStun(up.dataBoolean, up.dataLong);
-                    } else if (up.action.equals("StartGather")) {
-                        player.startGather(up.dataString);
-                    } else if (up.action.equals("StopGather")) {
-                        player.stopGather();
-                    } else if (up.action.equals("StopJump")) {
-                        player.stopJump();
-                    } else if (up.action.equals("StopMove")) {
-                        player.stopMove();
+                    } else if (up.action.equals("Remove")) {
+                        removePlayer(player.id);
+                    } else if (up.action.equals("UnEquip")) {
+                        player.unEquip(up.dataString);
                     }
                 }
             }
@@ -1034,7 +1043,6 @@ public class PlayerManager extends Manager {
             if (players.containsKey(ur.playerId)) {
                 Player player = players.get(ur.playerId);
                 if (player != null) {
-                    player.getRobot().setPosition(ur.mapX, ur.mapY);
                     if (ur.previousGoal != null) {
                         Goal g = ur.previousGoal;
                         g.setTransient(registry, player.getRobot().ai);
@@ -1057,12 +1065,151 @@ public class PlayerManager extends Manager {
         }
     }
 
+    public void processOobabooUpdate(UpdateOobaboo uo) {
+        if (uo != null) {
+            if (players.containsKey(uo.playerId)) {
+                Player player = players.get(uo.playerId);
+                if (player != null) {
+                }
+            }
+        }
+    }
+
+    public void renderPointer(Graphics g, Player p) {
+        int xPos = 0;
+        int yPos = 0;
+
+        if (p.getSpriteRect() != null) {
+            if (!p.getSpriteRect().intersects(getPanelRect())) {
+                //render arrow
+                yPos = mapToPanelY(p.getMapY());
+                yPos = getPHeight() - yPos - 30;
+
+                if (yPos < 10) {
+                    yPos = 10;
+                }
+                if (yPos > getPHeight() - 165) {
+                    yPos = getPHeight() - 165;
+                }
+
+                if (p.getMapX() < currentPlayer.getMapX()) {
+                    xPos = 3;
+                    g.drawImage(registry.getImageLoader().getImage("Misc/ArrowLeft"), xPos, yPos, null);
+                } else {
+                    xPos = getPWidth() - 30 - 3;
+                    g.drawImage(registry.getImageLoader().getImage("Misc/ArrowRight"), xPos, yPos, null);
+                }
+
+                //render player name
+                FontMetrics fm = g.getFontMetrics();
+                int messageWidth = fm.stringWidth(p.getName());
+                if (p.getMapX() < currentPlayer.getMapX()) {
+                    xPos = 33;
+                } else {
+                    xPos = getPWidth() - 40 - 10 - messageWidth;
+                }
+
+                yPos += 18;
+
+                Font textFont = new Font("SansSerif", Font.BOLD, 14);
+                g.setFont(textFont);
+
+                registry.ghettoOutline(g, Color.BLACK, p.getName(), xPos, yPos);
+
+                g.setColor(Color.white);
+                g.drawString(p.getName(),
+                        xPos,
+                        yPos);
+            }
+        }
+    }
+
+    public void renderPointer(Graphics g, Oobaboo o) {
+        int xPos = 0;
+        int yPos = 0;
+
+        if (o.getSpriteRect() != null) {
+            if (!o.getSpriteRect().intersects(getPanelRect())) {
+                //render arrow
+                yPos = mapToPanelY(o.getMapY());
+                yPos = getPHeight() - yPos - 30;
+
+                if (yPos < 10) {
+                    yPos = 10;
+                }
+                if (yPos > getPHeight() - 165) {
+                    yPos = getPHeight() - 165;
+                }
+
+                if (o.getMapX() < currentPlayer.getMapX()) {
+                    xPos = 3;
+                    g.drawImage(registry.getImageLoader().getImage("Misc/ArrowLeft"), xPos, yPos, null);
+                } else {
+                    xPos = getPWidth() - 30 - 3;
+                    g.drawImage(registry.getImageLoader().getImage("Misc/ArrowRight"), xPos, yPos, null);
+                }
+
+                //render player name
+                FontMetrics fm = g.getFontMetrics();
+                int messageWidth = fm.stringWidth(o.getName());
+                if (o.getMapX() < currentPlayer.getMapX()) {
+                    xPos = 33;
+                } else {
+                    xPos = getPWidth() - 40 - 10 - messageWidth;
+                }
+
+                yPos += 18;
+
+                Font textFont = new Font("SansSerif", Font.BOLD, 14);
+                g.setFont(textFont);
+
+                registry.ghettoOutline(g, Color.BLACK, o.getName(), xPos, yPos);
+
+                g.setColor(Color.white);
+                g.drawString(o.getName(),
+                        xPos,
+                        yPos);
+            }
+        }
+    }
+    
+    public void renderMiniMapPlayers(Graphics g, int mx, int my, int cx, int cy, int w, int h, int x, int y) {
+        HashMap<String, Player> ps = new HashMap<String, Player>(players);
+        Player player = null;
+        int[] xy = null;
+        
+        try {
+            for (String key : ps.keySet()) {
+                player = (Player) ps.get(key);
+                xy = registry.getBlockManager().getMiniMapPosition(mx, my, cx, cy, w, h, player.getMapX()/this.gameController.getBlockWidth(), player.getMapY()/this.gameController.getBlockHeight());
+                if((xy[0] > mx && xy[0] < mx+w) && (xy[1] > my+1 && xy[1] < my+h)) {
+                    renderMiniMapPlayer(g, xy[0], xy[1]);
+                }
+            }
+        } catch (Exception e) {
+        }
+    }
+
+    private void renderMiniMapPlayer(Graphics g, int x, int y) {
+        g.setColor(Color.black);
+        g.fillRect(x-2, y-7, 4, 6);
+        g.setColor(Color.white);
+        g.fillRect(x-1, y-6, 2, 4);
+    }
+    
     public void render(Graphics g) {
         try {
             for (String key : players.keySet()) {
                 Player p = (Player) players.get(key);
                 if (p != null) {
                     p.render(g);
+                    if (p != currentPlayer) {
+                        renderPointer(g, p);
+                    }
+                    Oobaboo o = p.getOobaboo();
+                    if (o != null) {
+                        renderPointer(g, o);
+                    }
                 }
             }
         } catch (ConcurrentModificationException concEx) {

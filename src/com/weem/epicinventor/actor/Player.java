@@ -2,6 +2,7 @@ package com.weem.epicinventor.actor;
 
 import com.weem.epicinventor.*;
 import com.weem.epicinventor.actor.monster.*;
+import com.weem.epicinventor.actor.oobaboo.*;
 import com.weem.epicinventor.armor.*;
 import com.weem.epicinventor.hud.*;
 import com.weem.epicinventor.inventory.*;
@@ -34,6 +35,7 @@ public class Player extends Actor implements Serializable {
     private int armorLegsLevel;
     private int armorFeetLevel;
     private Robot robot;
+    transient private Oobaboo oobaboo;
     transient private PlayerManager playerManager;
     private boolean isFallAnimating = false;
     private int selectedItem = 0;
@@ -77,6 +79,8 @@ public class Player extends Actor implements Serializable {
     transient boolean cameraReturning;
     transient public double cameraX, cameraY;
     transient public double cameraMoveSize = 0;
+    transient public UDPKeys keyState;
+    transient private UDPPlayer lastUDPUpdate;
 
     public Player() {
         super(null, null, "", 0, 0);
@@ -142,7 +146,6 @@ public class Player extends Actor implements Serializable {
     public void resetPlayer() {
         setPositionToSpawn();
 
-        stateChanged = true;
         isStill = true;
         isTryingToMove = false;
         mouseClickHeld = false;
@@ -169,7 +172,7 @@ public class Player extends Actor implements Serializable {
         statusStun = false;
 
         hitPoints = baseHitPoints;
-        weaponImages = new BufferedImage[6 * 2];
+        weaponImages = new BufferedImage[12 * 2];
         weaponImages[0] = null;
 
         updateArmorPoints();
@@ -178,7 +181,7 @@ public class Player extends Actor implements Serializable {
         if (robot.isActive()) {
             robot.toggleActivated(mapX, mapY, true);
         }
-        
+
         projectileOut = false;
 
         registry.setBossFight(false);
@@ -229,7 +232,7 @@ public class Player extends Actor implements Serializable {
         manager = rg.getPlayerManager();
         fallDamageMultiplier = 2.5f;
 
-        weaponImages = new BufferedImage[6 * 2];
+        weaponImages = new BufferedImage[12 * 2];
         weaponImages[0] = null;
         attackArcOffsetX = 0;
         attackArcOffsetY = 10;
@@ -263,15 +266,40 @@ public class Player extends Actor implements Serializable {
         lastMapY = mapY;
 
         robot.init();
+
+        if (oobaboo != null) {
+            oobaboo.init();
+        }
     }
-    
+
+    public void spawnOobaboo(String type) {
+        registry.getResourceManager().stopNPCGather(this);
+        if (type.equals("Healer")) {
+            oobaboo = new OobabooHealer(playerManager, this, registry, "Images/Oobaboo/Healer/Standing", mapX);
+        } else if (type.equals("Gatherer")) {
+            oobaboo = new OobabooGatherer(playerManager, this, registry, "Images/Oobaboo/Gatherer/Standing", mapX);
+        } else if (type.equals("Warrior")) {
+            oobaboo = new OobabooWarrior(playerManager, this, registry, "Images/Oobaboo/Warrior/Standing", mapX);
+        }
+
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.NONE && registry.getNetworkThread() != null) {
+            if (registry.getNetworkThread().readyForUpdates()) {
+                registry.getNetworkThread().sendData(oobaboo);
+            }
+        }
+    }
+
+    public void oobabooDie() {
+        oobaboo = null;
+    }
+
     public boolean getCameraReturning() {
         return cameraReturning;
     }
-    
+
     public void setCameraReturning(boolean r) {
         cameraReturning = r;
-        if(cameraReturning) {
+        if (cameraReturning) {
             cameraX = mapX;
             cameraY = mapY;
             cameraMoveSize = 0;
@@ -383,6 +411,15 @@ public class Player extends Actor implements Serializable {
                 playerManager.showLevelUpGraphic();
             }
         }
+
+        if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
+            if (registry.getNetworkThread().readyForUpdates()) {
+                UpdatePlayer up = new UpdatePlayer(this.getId());
+                up.action = "AddXP";
+                up.dataInt = x;
+                registry.getNetworkThread().sendData(up);
+            }
+        }
     }
 
     public void removeXP(int x, int mx, int my) {
@@ -475,9 +512,20 @@ public class Player extends Actor implements Serializable {
 
     public void playerGiveItemXP(String itemName, int itemQty) {
         if (itemName != null) {
-            //give the player xp - xp table is built on the xp for a kill and then an item multiplier is applied
-            SoundClip cl = new SoundClip("Player/Good");
-            this.addXP(getXPForItem(this.getLevel(), itemName) * itemQty);
+            if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+                //give the player xp - xp table is built on the xp for a kill and then an item multiplier is applied
+                SoundClip cl = new SoundClip("Player/Good");
+                this.addXP(getXPForItem(this.getLevel(), itemName) * itemQty);
+            }
+            if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.NONE && registry.getNetworkThread() != null) {
+                if (registry.getNetworkThread().readyForUpdates()) {
+                    UpdatePlayer up = new UpdatePlayer(this.getId());
+                    up.name = this.getName();
+                    up.action = "AddXP";
+                    up.dataInt = getXPForItem(this.getLevel(), itemName) * itemQty;
+                    registry.getNetworkThread().sendData(up);
+                }
+            }
         }
     }
 
@@ -502,6 +550,7 @@ public class Player extends Actor implements Serializable {
                     startJumpSize = JUMP_SIZE_INSIDE_ROBOT;
                     insideRobot = true;
                     robot.stopAttacks();
+                    robot.playerGettingInside();
 
                     if (particleEmitter != null) {
                         particleEmitter.setActive(false);
@@ -526,6 +575,8 @@ public class Player extends Actor implements Serializable {
     }
 
     public void scrollQuickBar(int steps) {
+        handleReleased(null);
+
         selectedItem += steps;
 
         if (selectedItem < 0) {
@@ -544,6 +595,7 @@ public class Player extends Actor implements Serializable {
     }
 
     public void setPlayerSelectedItem(int i) {
+        handleReleased(null);
         if (i >= 0 && i <= 9) {
             selectedItem = i;
             weaponImages[0] = null;
@@ -559,26 +611,26 @@ public class Player extends Actor implements Serializable {
                 BufferedImage weaponImage = registry.getImageLoader().getImage(imageName);
                 if (weaponImage != null) {
                     int angle = 0;
-                    for (int j = 0; j < 6; j++) {
+                    for (int j = 0; j < 12; j++) {
                         weaponImages[j] = weaponImage;
-                        angle = (int) ((float) j / 4.0f * 90.0f);
+                        angle = (int) ((float) j / 8.0f * 90.0f);
                         AffineTransform at = new AffineTransform();
                         at.rotate(Math.toRadians(angle), weaponImages[j].getWidth() / 2, weaponImages[j].getHeight() / 2);
                         AffineTransformOp atop = new AffineTransformOp(at, AffineTransformOp.TYPE_BILINEAR);
                         weaponImages[j] = atop.filter(weaponImages[j], null);
                     }
-                    for (int j = 0; j < 6; j++) {
-                        weaponImages[j + 6] = weaponImage;
-                        angle = (int) ((float) j / 4.0f * 90.0f);
-                        AffineTransform at = new AffineTransform();
-                        at.rotate(Math.toRadians(angle), weaponImages[j + 6].getWidth() / 2, weaponImages[j + 6].getHeight() / 2);
-                        AffineTransformOp atop = new AffineTransformOp(at, AffineTransformOp.TYPE_BILINEAR);
-                        weaponImages[j + 6] = atop.filter(weaponImages[j + 6], null);
+                    for (int j = 0; j < 12; j++) {
+                        weaponImages[j + 12] = weaponImage;
                         AffineTransform tx = null;
                         tx = AffineTransform.getScaleInstance(-1, 1);
-                        tx.translate(-1 * weaponImages[j + 6].getWidth(), 0);
+                        tx.translate(-1 * weaponImages[j + 12].getWidth(), 0);
                         AffineTransformOp op = new AffineTransformOp(tx, AffineTransformOp.TYPE_BILINEAR);
-                        weaponImages[j + 6] = op.filter(weaponImages[j + 6], null);
+                        weaponImages[j + 12] = op.filter(weaponImages[j + 12], null);
+                        angle = (int) ((float) -j / 8.0f * 90.0f);
+                        AffineTransform at = new AffineTransform();
+                        at.rotate(Math.toRadians(angle), weaponImages[j + 12].getWidth() / 2, weaponImages[j + 12].getHeight() / 2);
+                        AffineTransformOp atop = new AffineTransformOp(at, AffineTransformOp.TYPE_BILINEAR);
+                        weaponImages[j + 12] = atop.filter(weaponImages[j + 12], null);
                     }
                     attackRange = weaponImage.getHeight() + 10;
                 }
@@ -629,6 +681,22 @@ public class Player extends Actor implements Serializable {
         inventory.swapInventoryLocations(from, to);
     }
 
+    public void unEquip(String equipmentType) {
+        if (equipmentType.equals("head")) {
+            armorHead = null;
+            armorHeadLevel = 0;
+        } else if (equipmentType.equals("chest")) {
+            armorChest = null;
+            armorChestLevel = 0;
+        } else if (equipmentType.equals("legs")) {
+            armorLegs = null;
+            armorLegsLevel = 0;
+        } else if (equipmentType.equals("feet")) {
+            armorFeet = null;
+            armorFeetLevel = 0;
+        }
+    }
+
     public void playerUnEquipToInventory(String equipmentType, int to) {
         if (equipmentType.equals("head")) {
             if (playerAddItem(to, armorHead.getName(), 1, armorHeadLevel) == 0) {
@@ -658,19 +726,32 @@ public class Player extends Actor implements Serializable {
     }
 
     public void playerUnEquipToDelete(String equipmentType) {
+
         if (equipmentType.equals("head")) {
+            if (armorHead != null) {
+                playerGiveItemXP(armorHead.getName(), 1);
+            }
             armorHead = null;
             armorHeadLevel = 0;
             updateArmorPoints();
-        } else if (equipmentType.equals("cheat")) {
+        } else if (equipmentType.equals("chest")) {
+            if (armorChest != null) {
+                playerGiveItemXP(armorChest.getName(), 1);
+            }
             armorChest = null;
             armorChestLevel = 0;
             updateArmorPoints();
         } else if (equipmentType.equals("legs")) {
+            if (armorLegs != null) {
+                playerGiveItemXP(armorLegs.getName(), 1);
+            }
             armorLegs = null;
             armorLegsLevel = 0;
             updateArmorPoints();
         } else if (equipmentType.equals("feet")) {
+            if (armorFeet != null) {
+                playerGiveItemXP(armorFeet.getName(), 1);
+            }
             armorFeet = null;
             armorFeetLevel = 0;
             updateArmorPoints();
@@ -747,8 +828,10 @@ public class Player extends Actor implements Serializable {
                     }
                 }
 
-                //give the player xp - xp table is built on the xp for a kill and then an item multiplier is applied
-                this.addXP(getXPForItem(this.getLevel(), itemType));
+                if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+                    //give the player xp - xp table is built on the xp for a kill and then an item multiplier is applied
+                    this.addXP(getXPForItem(this.getLevel(), itemType));
+                }
             }
         }
     }
@@ -799,6 +882,10 @@ public class Player extends Actor implements Serializable {
     }
 
     public void playerEquipFromInventory(int slot) {
+        playerEquipFromInventory(slot, true);
+    }
+
+    public void playerEquipFromInventory(int slot, boolean changeInventory) {
         String type = inventory.getTypeFromSlot(slot);
 
         if (type.equals("Armor")) {
@@ -811,60 +898,76 @@ public class Player extends Actor implements Serializable {
                         //armor slot was previously empty - equip and remove from inv
                         armorHead = newArmorType;
                         armorHeadLevel = inventory.getLevelFromSlot(slot);
-                        inventory.deleteInventory(slot, 0);
+                        if (changeInventory) {
+                            inventory.deleteInventory(slot, 0);
+                        }
                     } else {
                         //switching out armor for another
                         ArmorType oldArmorType = armorHead;
                         int oldArmorLevel = armorHeadLevel;
                         armorHead = newArmorType;
                         armorHeadLevel = inventory.getLevelFromSlot(slot);
-                        inventory.deleteInventory(slot, 0);
-                        inventory.addToInventory(slot, oldArmorType.getName(), 1, oldArmorLevel);
+                        if (changeInventory) {
+                            inventory.deleteInventory(slot, 0);
+                            inventory.addToInventory(slot, oldArmorType.getName(), 1, oldArmorLevel);
+                        }
                     }
                 } else if (newArmorType.getType().equals("Chest")) {
                     if (armorChest == null) {
                         //armor slot was previously empty - equip and remove from inv
                         armorChest = newArmorType;
                         armorChestLevel = inventory.getLevelFromSlot(slot);
-                        inventory.deleteInventory(slot, 0);
+                        if (changeInventory) {
+                            inventory.deleteInventory(slot, 0);
+                        }
                     } else {
                         //switching out armor for another
                         ArmorType oldArmorType = armorChest;
                         int oldArmorLevel = armorChestLevel;
                         armorChest = newArmorType;
                         armorChestLevel = inventory.getLevelFromSlot(slot);
-                        inventory.deleteInventory(slot, 0);
-                        inventory.addToInventory(slot, oldArmorType.getName(), 1, oldArmorLevel);
+                        if (changeInventory) {
+                            inventory.deleteInventory(slot, 0);
+                            inventory.addToInventory(slot, oldArmorType.getName(), 1, oldArmorLevel);
+                        }
                     }
                 } else if (newArmorType.getType().equals("Legs")) {
                     if (armorLegs == null) {
                         //armor slot was previously empty - equip and remove from inv
                         armorLegs = newArmorType;
                         armorLegsLevel = inventory.getLevelFromSlot(slot);
-                        inventory.deleteInventory(slot, 0);
+                        if (changeInventory) {
+                            inventory.deleteInventory(slot, 0);
+                        }
                     } else {
                         //switching out armor for another
                         ArmorType oldArmorType = armorLegs;
                         int oldArmorLevel = armorLegsLevel;
                         armorLegs = newArmorType;
                         armorLegsLevel = inventory.getLevelFromSlot(slot);
-                        inventory.deleteInventory(slot, 0);
-                        inventory.addToInventory(slot, oldArmorType.getName(), 1, oldArmorLevel);
+                        if (changeInventory) {
+                            inventory.deleteInventory(slot, 0);
+                            inventory.addToInventory(slot, oldArmorType.getName(), 1, oldArmorLevel);
+                        }
                     }
                 } else if (newArmorType.getType().equals("Feet")) {
                     if (armorFeet == null) {
                         //armor slot was previously empty - equip and remove from inv
                         armorFeet = newArmorType;
                         armorFeetLevel = inventory.getLevelFromSlot(slot);
-                        inventory.deleteInventory(slot, 0);
+                        if (changeInventory) {
+                            inventory.deleteInventory(slot, 0);
+                        }
                     } else {
                         //switching out armor for another
                         ArmorType oldArmorType = armorFeet;
                         int oldArmorLevel = armorFeetLevel;
                         armorFeet = newArmorType;
                         armorFeetLevel = inventory.getLevelFromSlot(slot);
-                        inventory.deleteInventory(slot, 0);
-                        inventory.addToInventory(slot, oldArmorType.getName(), 1, oldArmorLevel);
+                        if (changeInventory) {
+                            inventory.deleteInventory(slot, 0);
+                            inventory.addToInventory(slot, oldArmorType.getName(), 1, oldArmorLevel);
+                        }
                     }
                 }
 
@@ -1015,6 +1118,15 @@ public class Player extends Actor implements Serializable {
         return robot.getBatteryPercentage();
     }
 
+    public Oobaboo getOobaboo() {
+        return oobaboo;
+    }
+
+    public void setOobaboo(Oobaboo o) {
+        o.setTransient(registry, this);
+        oobaboo = o;
+    }
+
     public Robot getRobot() {
         return robot;
     }
@@ -1052,14 +1164,13 @@ public class Player extends Actor implements Serializable {
     }
 
     public void startGather(String rt) {
-        stateChanged = true;
         actionMode = ActionMode.GATHERING;
         currentResourceType = playerManager.getResourceTypeByResourceId(rt);
     }
 
     @Override
     public void jump() {
-        if (!statusStun) {
+        if (!statusStun && !cameraReturning) {
             if (insideRobot && robot.getInventory().contains("Propeller") && vertMoveMode != VertMoveMode.JUMPING && vertMoveMode != VertMoveMode.NOT_JUMPING) {
                 flap();
             } else if (vertMoveMode == VertMoveMode.NOT_JUMPING) {
@@ -1078,8 +1189,13 @@ public class Player extends Actor implements Serializable {
         }
     }
 
+    public void npcDoneCollecting() {
+        if (oobaboo != null) {
+            oobaboo.setActionMode(ActionMode.NONE);
+        }
+    }
+
     public void stopGather() {
-        stateChanged = true;
         actionMode = ActionMode.NONE;
         currentResourceType = null;
     }
@@ -1117,14 +1233,14 @@ public class Player extends Actor implements Serializable {
     }
 
     public void handleClick(Point clickPoint) {
-        if(cameraReturning) {
+        if (cameraReturning) {
             this.setCameraReturning(false);
         }
         if (!insideRobot && !statusStun) {
             if (registry.getPlayerSelectedItemType(this).equals("Weapon")) {
                 attack(clickPoint);
             } else if (inventory.getCategoryFromSlot(getSelectedItemIndex()).equals("Placeable")) {
-                if (!playerManager.currentlyPlacing() && playerManager.getCurrentPlayer() == this) {
+                if (!playerManager.currentlyPlacing() && playerManager.getCurrentPlayer() == this && !isPlayerMoving()) {
                     if (playerManager.playerStandingOnTownBlocks() || inventory.getNameFromSlot(getSelectedItemIndex()).equals("TownBlock")) {
                         placingSlot = getSelectedItemIndex();
                         playerManager.loadPlaceable(inventory.getNameFromSlot(placingSlot), mapX + baseOffset, mapY);
@@ -1146,6 +1262,12 @@ public class Player extends Actor implements Serializable {
                 } else if (registry.getPlayerSelectedItemName(this).equals("BrokenMirror")) {
                     SoundClip cl = new SoundClip(registry, "Misc/Teleport", getCenterPoint());
                     setPositionToRandom();
+                } else if (registry.getPlayerSelectedItemName(this).equals("Idol")) {
+                    if (this == playerManager.getCurrentPlayer()) {
+                        playerManager.playerDeleteInventory(registry.getPlayerSelectedItemSlotIndex(this), 1);
+                        playerManager.showOobabooHUD();
+                        SoundClip cl = new SoundClip(registry, "Oobaboo/Appear", getCenterPoint());
+                    }
                 }
             } else if (inventory.getTypeFromSlot(getSelectedItemIndex()).equals("Consumable")) {
                 if (hitPoints >= baseHitPoints) {
@@ -1178,12 +1300,11 @@ public class Player extends Actor implements Serializable {
     }
 
     public void handleRightClick() {
-        playerManager.cancelPlaceable();
+        playerManager.cancelPlaceable(this);
     }
 
     public void handleReleased(Point clickPoint) {
         mouseClickHeld = false;
-        stateChanged = true;
         updateImage();
         if (particleEmitter != null) {
             particleEmitter.setActive(false);
@@ -1199,7 +1320,6 @@ public class Player extends Actor implements Serializable {
             Point mapPoint = new Point(registry.getMouseMapPosition());
             actionMode = ActionMode.ATTACKING;
             currentAttackType = AttackType.MELEE;
-            stateChanged = true;
             attackRefreshTimerStart = System.currentTimeMillis();
             attackRefreshTimerEnd = System.currentTimeMillis() + newWeaponType.getSpeed();
 
@@ -1229,7 +1349,6 @@ public class Player extends Actor implements Serializable {
         if (newWeaponType != null && clickPoint != null) {
             actionMode = ActionMode.ATTACKING;
             currentAttackType = AttackType.RANGE;
-            stateChanged = true;
             attackRefreshTimerStart = System.currentTimeMillis();
             attackRefreshTimerEnd = System.currentTimeMillis() + newWeaponType.getSpeed();
 
@@ -1366,18 +1485,19 @@ public class Player extends Actor implements Serializable {
             if (damage > 0) {
                 SoundClip cl = new SoundClip("Player/Hurt" + Rand.getRange(1, 5));
                 registry.getIndicatorManager().createIndicator(mapX + (width / 2), mapY + 50, "-" + Integer.toString(damage));
-                hitPoints -= damage;
+                if (hitPoints - damage < 0) {
+                    hitPoints = 0;
+                } else {
+                    hitPoints -= damage;
+                }
                 invulnerable = true;
                 playerManager.stopActions(this);
             }
         }
 
         if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(this.getId());
-                up.mapX = this.getMapX();
-                up.mapY = this.getMapY();
-                up.vertMoveMode = this.getVertMoveMode();
                 up.action = "ApplyDamage";
                 up.dataInt = damage;
                 up.actor = a;
@@ -1402,13 +1522,24 @@ public class Player extends Actor implements Serializable {
         return isTryingToMove;
     }
 
+    public void playerStopLoopingSound() {
+        if (lowHPSoundClip != null) {
+            lowHPSoundClip.stop();
+            lowHPSoundClip = null;
+        }
+        if (lowHPSoundClip != null) {
+            lowHPSoundClip.stop();
+            lowHPSoundClip = null;
+        }
+    }
+
     /*
      * public void setIsTryingToFlap(boolean f) { up.vertMoveMode =
      * this.getVertMoveMode(); if (f != isTryingToFlap) { if
      * (registry.getGameController().multiplayerMode ==
      * registry.getGameController().multiplayerMode.CLIENT &&
      * registry.getNetworkThread() != null) { if
-     * (registry.getNetworkThread().readyForUpdates) { UpdatePlayer up = new
+     * (registry.getNetworkThread().readyForUpdates()) { UpdatePlayer up = new
      * UpdatePlayer(this.getId()); up.mapX = this.getMapX(); up.mapY =
      * this.getMapY(); up.vertMoveMode = this.getVertMoveMode(); up.action =
      * "SetIsTryingToFlap"; registry.getNetworkThread().sendData(up); } } }
@@ -1418,15 +1549,6 @@ public class Player extends Actor implements Serializable {
     public void flap() {
         if (vertMoveMode != VertMoveMode.FLYING) {
             setVertMoveMode(VertMoveMode.FLYING);
-        }
-        if (playerManager.getCurrentPlayer() == this && registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
-                UpdatePlayer up = new UpdatePlayer(this.getId());
-                up.mapX = this.getMapX();
-                up.mapY = this.getMapY();
-                up.vertMoveMode = this.getVertMoveMode();
-                registry.getNetworkThread().sendData(up);
-            }
         }
     }
 
@@ -1473,10 +1595,9 @@ public class Player extends Actor implements Serializable {
         //update animation
         if (isActive && isAnimating && actionMode == ActionMode.ATTACKING) {
             currentAnimationFrame++;
-            if (currentAnimationFrame >= 6) {
+            if (currentAnimationFrame >= 12) {
                 currentAnimationFrame = 0;
                 actionMode = ActionMode.NONE;
-                stateChanged = true;
                 updateImage();
             }
         } else if (isActive && isAnimating) {
@@ -1489,46 +1610,45 @@ public class Player extends Actor implements Serializable {
             }
         }
 
-        //update position
-        if (!statusStun) {
-            if (knockBackX > 0) {
-                mapX += checkCollide(knockBackX);
-            } else if (knockBackX < 0) {
-                mapX -= checkCollide(knockBackX);
-            } else {
-                if (isTryingToMove) {
-                    if (facing == Facing.RIGHT) {
-                        mapX += checkCollideRight();
-                    } else {
-                        mapX -= checkCollideLeft();
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            //update position
+            if (!statusStun) {
+                if (knockBackX > 0) {
+                    mapX += checkCollide(knockBackX);
+                } else if (knockBackX < 0) {
+                    mapX -= checkCollide(knockBackX);
+                } else {
+                    if (isTryingToMove) {
+                        if (facing == Facing.RIGHT) {
+                            mapX += checkCollideRight();
+                        } else {
+                            mapX -= checkCollideLeft();
+                        }
+                    } else if (vertMoveMode != VertMoveMode.NOT_JUMPING) {
+                        checkCollide(0);
                     }
-                } else if (vertMoveMode != VertMoveMode.NOT_JUMPING) {
-                    checkCollide(0);
                 }
             }
-        }
 
-        //jumping/falling checks
-        if (vertMoveMode == VertMoveMode.JUMPING) {
-            updateJumping();
-        } else if (vertMoveMode == VertMoveMode.FLYING) {
-            updateAscending();
-        } else if (vertMoveMode == VertMoveMode.FALLING) {
-            updateFalling();
-            if (fallSize > startJumpSize + 2 * gravity) {
-                stateChanged = true;
+            //jumping/falling checks
+            if (vertMoveMode == VertMoveMode.JUMPING) {
+                updateJumping();
+            } else if (vertMoveMode == VertMoveMode.FLYING) {
+                updateAscending();
+            } else if (vertMoveMode == VertMoveMode.FALLING) {
+                updateFalling();
             }
-        }
 
-        //check to see if player is touching an enemy
-        if (!invulnerable && registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
-            Damage damage = playerManager.getMonsterTouchDamage(spriteRect);
-            if (damage != null) {
-                int touchDamage = damage.getAmount();
-                if (touchDamage > 0) {
-                    applyDamage(touchDamage, damage.getSource());
-                    if (damage.getKnockBackX() > 0 || damage.getKnockBackY() > 0) {
-                        applyKnockBack(damage.getKnockBackX(), damage.getKnockBackY());
+            //check to see if player is touching an enemy
+            if (!invulnerable && registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+                Damage damage = playerManager.getMonsterTouchDamage(spriteRect, getCenterPoint().x);
+                if (damage != null) {
+                    int touchDamage = damage.getAmount();
+                    if (touchDamage > 0) {
+                        applyDamage(touchDamage, damage.getSource());
+                        if (damage.getKnockBackX() > 0 || damage.getKnockBackY() > 0) {
+                            applyKnockBack(damage.getKnockBackX(), damage.getKnockBackY());
+                        }
                     }
                 }
             }
@@ -1550,25 +1670,34 @@ public class Player extends Actor implements Serializable {
         mapX = playerManager.checkMapX(mapX, width);
         mapY = playerManager.checkMapY(mapY, height);
 
-        checkIfFalling();
-
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            checkIfFalling();
+        }
         updateImage();
 
         if (hitPoints <= 0) {
             setCameraReturning(true);
-            
+
             BufferedImage im = null;
- 
+
             if (isAnimating) {
                 im = registry.getImageLoader().getImage(image, currentAnimationFrame);
             } else {
                 im = registry.getImageLoader().getImage(image);
             }
             registry.getPixelizeManager().pixelize(im, mapX, mapY);
-            
+
+            Rectangle panelRect = playerManager.getPanelRect();
+            playerManager.playerDied(panelRect);
+
             int oldX = mapX;
             int oldY = mapY;
             resetPlayer();
+
+            if (oobaboo != null) {
+                oobaboo.die();
+                oobaboo = null;
+            }
 
             //take away 5% of xp
             float totalXPForCurrentLevel = 0;
@@ -1578,8 +1707,6 @@ public class Player extends Actor implements Serializable {
                 totalXPForCurrentLevel = playerManager.getXPNeededForLevel(this.getLevel() + 1);
             }
             this.removeXP((int) (totalXPForCurrentLevel * 0.05f), oldX, oldY);
-
-            playerManager.playerDied();
         }
 
         if (this.getHitPointPercentage() >= 10 && this.getHitPointPercentage() <= 15) {
@@ -1627,6 +1754,10 @@ public class Player extends Actor implements Serializable {
             robot.update();
         }
 
+        if (oobaboo != null) {
+            oobaboo.update();
+        }
+
         if (particleEmitter != null) {
             if (facing == Actor.Facing.LEFT) {
                 particleEmitter.setPosition(mapX, mapY + 30);
@@ -1639,39 +1770,87 @@ public class Player extends Actor implements Serializable {
         if (mouseClickHeld == true && attackRefreshTimerEnd < registry.currentTime && !insideRobot) {
             attack(registry.getMousePosition());
         }
+
+        if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.CLIENT) {
+            applyUpdate();
+        }
+
+        if (this == playerManager.getCurrentPlayer()) {
+            boolean showMiniMap = false;
+            if (registry.getPlayerSelectedItemName(this).equals("CopperLocator")) {
+                showMiniMap = true;
+                registry.getHUDManager().updateResourceName("Copper");
+            } else if (registry.getPlayerSelectedItemName(this).equals("DiamondLocator")) {
+                showMiniMap = true;
+                registry.getHUDManager().updateResourceName("Diamond");
+            } else if (registry.getPlayerSelectedItemName(this).equals("EmeraldLocator")) {
+                showMiniMap = true;
+                registry.getHUDManager().updateResourceName("Emerald");
+            } else if (registry.getPlayerSelectedItemName(this).equals("GoldLocator")) {
+                showMiniMap = true;
+                registry.getHUDManager().updateResourceName("Gold");
+            } else if (registry.getPlayerSelectedItemName(this).equals("IronLocator")) {
+                showMiniMap = true;
+                registry.getHUDManager().updateResourceName("Iron");
+            } else if (registry.getPlayerSelectedItemName(this).equals("PlatinumLocator")) {
+                showMiniMap = true;
+                registry.getHUDManager().updateResourceName("Platinum");
+            } else if (registry.getPlayerSelectedItemName(this).equals("RubyLocator")) {
+                showMiniMap = true;
+                registry.getHUDManager().updateResourceName("Ruby");
+            } else if (registry.getPlayerSelectedItemName(this).equals("SapphireLocator")) {
+                showMiniMap = true;
+                registry.getHUDManager().updateResourceName("Sapphire");
+            } else if (registry.getPlayerSelectedItemName(this).equals("SilverLocator")) {
+                showMiniMap = true;
+                registry.getHUDManager().updateResourceName("Silver");
+            }
+
+            if (showMiniMap) {
+                registry.getHUDManager().showMiniMap(true);
+            } else {
+                registry.getHUDManager().showMiniMap(false);
+            }
+        }
     }
 
     public void updateLong() {
-        //calc HP regen rate
-        currentHPRegenRate = BASE_HP_REGEN_RATE;
-        currentHPRegenRate += registry.getPlaceableManager().getHPRegenerationBonus(getCenterPoint());
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            //calc HP regen rate
+            currentHPRegenRate = BASE_HP_REGEN_RATE;
+            currentHPRegenRate += registry.getPlaceableManager().getHPRegenerationBonus(getCenterPoint());
 
-        //regen some HP
-        float hpToRegen = (getTotalHitPoints() / 100f) * (float) currentHPRegenRate;
-        hpToRegen = hpToRegen / 60f;
+            //regen some HP
+            float hpToRegen = (getTotalHitPoints() / 100f) * (float) currentHPRegenRate;
+            hpToRegen = hpToRegen / 60f;
 
-        currentHPRegen += hpToRegen;
-        if (currentHPRegen >= 1) {
-            addHitPoints((int) currentHPRegen);
-            currentHPRegen = 0;
-        }
-
-        //calc attack bonus
-        statusAttackBonus = false;
-        attackBonus = 1f + registry.getPlaceableManager().getAttackBonus(getCenterPoint());
-        if (attackBonus > 1) {
-            statusAttackBonus = true;
-        }
-
-        //see if we have rez sickness
-        statusRezSickness = false;
-        if (rezSicknessStack > 0) {
-            if (rezSicknessEnd <= System.currentTimeMillis()) {
-                rezSicknessStack = 0;
+            currentHPRegen += hpToRegen;
+            if (currentHPRegen >= 1) {
+                addHitPoints((int) currentHPRegen);
+                currentHPRegen = 0;
             }
+
+            //calc attack bonus
+            statusAttackBonus = false;
+            attackBonus = 1f + registry.getPlaceableManager().getAttackBonus(getCenterPoint());
+            if (attackBonus > 1) {
+                statusAttackBonus = true;
+            }
+
+            //see if we have rez sickness
+            statusRezSickness = false;
             if (rezSicknessStack > 0) {
-                statusRezSickness = true;
+                if (rezSicknessEnd <= System.currentTimeMillis()) {
+                    rezSicknessStack = 0;
+                }
+                if (rezSicknessStack > 0) {
+                    statusRezSickness = true;
+                }
             }
+        }
+
+        if (oobaboo != null) {
+            oobaboo.updateLong();
         }
     }
 
@@ -1688,7 +1867,7 @@ public class Player extends Actor implements Serializable {
         int animationFrame = currentAnimationFrame;
 
         //draw springs
-        if (armorFeet != null && vertMoveMode != VertMoveMode.NOT_JUMPING) {
+        if (armorFeet != null && vertMoveMode != VertMoveMode.NOT_JUMPING && !insideRobot) {
             if (armorFeet.getName().equals("SpringFeet")) {
                 im = registry.getImageLoader().getImage("Player/Spring");
                 if (im != null) {
@@ -1814,7 +1993,16 @@ public class Player extends Actor implements Serializable {
             im = registry.getImageLoader().getImage("Player/Standing");
         } else {
             if (isAnimating) {
-                im = registry.getImageLoader().getImage(image, animationFrame);
+                if (newWeaponType != null) {
+                    if (actionMode == ActionMode.ATTACKING && newWeaponType.getType().equals("Melee")) {
+                        animationFrame = animationFrame / 2;
+                        im = registry.getImageLoader().getImage(image, animationFrame);
+                    } else {
+                        im = registry.getImageLoader().getImage(image, animationFrame);
+                    }
+                } else {
+                    im = registry.getImageLoader().getImage(image, animationFrame);
+                }
             } else {
                 im = registry.getImageLoader().getImage(image);
             }
@@ -2070,7 +2258,7 @@ public class Player extends Actor implements Serializable {
     public void renderMeleeAttack(Graphics g, int xPos, int yPos) {
         int[] offset = null;
         BufferedImage weaponImage = null;
-        if (currentAnimationFrame <= 5) {
+        if (currentAnimationFrame < 12) {
             offset = getMeleeAttackRotateOffsets(weaponImages[0]);
             offset[0] += xPos;
             offset[1] += yPos;
@@ -2121,19 +2309,19 @@ public class Player extends Actor implements Serializable {
         if (facing == Facing.RIGHT) {
             weaponImage = weaponImages[currentAnimationFrame];
         } else {
-            weaponImage = weaponImages[currentAnimationFrame + 6];
+            weaponImage = weaponImages[currentAnimationFrame + 12];
         }
         return weaponImage;
     }
 
     private int[] getMeleeAttackRotateOffsets(BufferedImage weaponImage) {
-        int angle = 90 - (int) ((float) currentAnimationFrame / 4.0f * 90.0f);
+        int angle = 90 - (int) ((float) currentAnimationFrame / 8.0f * 90.0f);
         int[] offset = new int[2];
         if (weaponImage != null) {
             offset[0] = -1 * weaponImage.getWidth() / 2 + 20;
             offset[1] = -1 * weaponImage.getHeight() / 2 + 34;
             if (facing == Facing.LEFT) {
-                angle = 90 + (int) ((float) currentAnimationFrame / 4.0f * 90.0f);
+                angle = 90 + (int) ((float) currentAnimationFrame / 8.0f * 90.0f);
                 offset[0] += 20;
             }
             offset[0] += (int) ((weaponImage.getHeight() / 2 + 20) * Math.cos(Math.toRadians(angle)));
@@ -2289,6 +2477,10 @@ public class Player extends Actor implements Serializable {
             robot.render(g);
         }
 
+        if (oobaboo != null) {
+            oobaboo.render(g);
+        }
+
         FontMetrics fm = g.getFontMetrics();
         int messageWidth = fm.stringWidth(name);
 
@@ -2362,31 +2554,27 @@ public class Player extends Actor implements Serializable {
 
     @Override
     protected void updateImage() {
-        if (stateChanged) {
-            if (actionMode == ActionMode.ATTACKING || (mouseClickHeld && currentAttackType == AttackType.RANGE)) {
-                if (currentAnimationFrame == 0 || !image.equals("Player/Swinging")) {
-                    loopImage("Player/Swinging", 0.10f);
-                }
-            } else if (vertMoveMode == VertMoveMode.FALLING && fallSize > startJumpSize) {
-                loopImage("Player/Falling");
-            } else if (vertMoveMode == VertMoveMode.JUMPING) {
-                setImage("Player/Jumping");
-            } else {
-                if (actionMode == ActionMode.GATHERING) {
-                    loopImage("Player/Gathering");
-                } else if (!isTryingToMove) {
-                    setImage("Player/Standing");
-                } else {
-                    loopImage("Player/Walking");
-                }
+        if (actionMode == ActionMode.ATTACKING || (mouseClickHeld && currentAttackType == AttackType.RANGE) && registry.getPlayerSelectedItemType(this).equals("Weapon")) {
+            if (currentAnimationFrame == 0 || !image.equals("Player/Swinging")) {
+                loopImage("Player/Swinging", 0.10f);
             }
-
-            stateChanged = false;
-
-            robot.setFacing(facing);
-            robot.setVertMoveMode(vertMoveMode);
-            robot.setIsTryingToMove(isTryingToMove);
+        } else if (vertMoveMode == VertMoveMode.FALLING && fallSize > startJumpSize) {
+            loopImage("Player/Falling");
+        } else if (vertMoveMode == VertMoveMode.JUMPING) {
+            setImage("Player/Jumping");
+        } else {
+            if (actionMode == ActionMode.GATHERING) {
+                loopImage("Player/Gathering");
+            } else if (!isTryingToMove) {
+                setImage("Player/Standing");
+            } else {
+                loopImage("Player/Walking");
+            }
         }
+
+        robot.setFacing(facing);
+        //robot.setVertMoveMode(vertMoveMode);
+        robot.setIsTryingToMove(isTryingToMove);
     }
 
     private void setFlameCannon(int damage) {
@@ -2420,6 +2608,194 @@ public class Player extends Actor implements Serializable {
             if (weaponSoundClip != null) {
                 weaponSoundClip.stop();
             }
+        }
+    }
+
+    public UDPRobot createRobotUpdate() {
+        if (robot != null) {
+            return robot.createUpdate();
+        } else {
+            return null;
+        }
+    }
+
+    public UDPOobaboo createOobabooUpdate() {
+        if (oobaboo != null) {
+            return oobaboo.createUpdate();
+        } else {
+            return null;
+        }
+    }
+
+    public UDPPlayer createUpdate() {
+        UDPPlayer udpUpdate = new UDPPlayer(id);
+        udpUpdate.mapX = mapX;
+        udpUpdate.lastMapY = lastMapY;
+        udpUpdate.mapY = mapY;
+        udpUpdate.width = width;
+        udpUpdate.height = height;
+        udpUpdate.xMoveSize = xMoveSize;
+        //udpUpdate.image = image;
+        udpUpdate.actionMode = actionMode;
+        udpUpdate.vertMoveMode = vertMoveMode;
+        udpUpdate.facing = facing;
+        udpUpdate.jumpSize = jumpSize;
+        //udpUpdate.ascendOriginalSize = ascendOriginalSize;
+        //udpUpdate.ascendSize = ascendSize;
+        //udpUpdate.ascendCount = ascendCount;
+        //udpUpdate.ascendMax = ascendMax;
+        //udpUpdate.fallSize = fallSize;
+        udpUpdate.isStill = isStill;
+        udpUpdate.isTryingToMove = isTryingToMove;
+        udpUpdate.startJumpSize = startJumpSize;
+        //udpUpdate.maxFallSize = maxFallSize;
+        //udpUpdate.gravity = gravity;
+        //udpUpdate.totalFall = totalFall;
+        //udpUpdate.completeFall = completeFall;
+        udpUpdate.totalHitPoints = totalHitPoints;
+        udpUpdate.hitPoints = hitPoints;
+        udpUpdate.totalArmorPoints = totalArmorPoints;
+        udpUpdate.armorPoints = armorPoints;
+        udpUpdate.knockBackX = knockBackX;
+        //udpUpdate.isDead = isDead;
+        udpUpdate.armorHead = armorHead;
+        udpUpdate.armorChest = armorChest;
+        udpUpdate.armorLegs = armorLegs;
+        udpUpdate.armorFeet = armorFeet;
+        udpUpdate.armorHeadLevel = armorHeadLevel;
+        udpUpdate.armorChestLevel = armorChestLevel;
+        udpUpdate.armorLegsLevel = armorLegsLevel;
+        udpUpdate.armorFeetLevel = armorFeetLevel;
+        udpUpdate.selectedItem = selectedItem;
+        udpUpdate.invulnerable = invulnerable;
+        udpUpdate.insideRobot = insideRobot;
+        udpUpdate.currentResourceType = currentResourceType;
+        //udpUpdate.currentHPRegen = currentHPRegen;
+        //udpUpdate.currentHPRegenRate = currentHPRegenRate;
+        //udpUpdate.attackBonus = attackBonus;
+        //udpUpdate.isTryingToFlap = isTryingToFlap;
+        udpUpdate.xp = xp;
+        if (this.robot.getIsActivated()) {
+            udpUpdate.robotActive = true;
+        } else {
+            udpUpdate.robotActive = false;
+        }
+        if (this.oobaboo != null) {
+            udpUpdate.oobabooActive = true;
+        } else {
+            udpUpdate.oobabooActive = false;
+        }
+
+        return udpUpdate;
+    }
+
+    public void processUpdate(UDPPlayer udpUpdate) {
+        //used so we only process a single update packet per player update
+        lastUDPUpdate = udpUpdate;
+    }
+
+    private void applyUpdate() {
+        synchronized (this) {
+            if (lastUDPUpdate != null) {
+                //if we're moving and have skipped an update (moving more than possible per frame, just move once - we can catch up later)
+                if (lastUDPUpdate.id == this.getId()) {
+                    if (Math.abs(lastUDPUpdate.mapX - mapX) > lastUDPUpdate.xMoveSize) {
+                        if (lastUDPUpdate.mapX > mapX) {
+                            mapX += lastUDPUpdate.xMoveSize;
+                        } else {
+                            mapX -= lastUDPUpdate.xMoveSize;
+                        }
+                    } else {
+                        mapX = lastUDPUpdate.mapX;
+                    }
+                } else {
+                    mapX = lastUDPUpdate.mapX;
+                }
+
+                lastMapY = lastUDPUpdate.lastMapY;
+                mapY = lastUDPUpdate.mapY;
+                width = lastUDPUpdate.width;
+                height = lastUDPUpdate.height;
+                xMoveSize = lastUDPUpdate.xMoveSize;
+                //image = lastUDPUpdate.image;
+                actionMode = lastUDPUpdate.actionMode;
+                vertMoveMode = lastUDPUpdate.vertMoveMode;
+                facing = lastUDPUpdate.facing;
+                jumpSize = lastUDPUpdate.jumpSize;
+                //ascendOriginalSize = lastUDPUpdate.ascendOriginalSize;
+                //ascendSize = lastUDPUpdate.ascendSize;
+                //ascendCount = lastUDPUpdate.ascendCount;
+                //ascendMax = lastUDPUpdate.ascendMax;
+                //fallSize = lastUDPUpdate.fallSize;
+                isStill = lastUDPUpdate.isStill;
+                isTryingToMove = lastUDPUpdate.isTryingToMove;
+                startJumpSize = lastUDPUpdate.startJumpSize;
+                //maxFallSize = lastUDPUpdate.maxFallSize;
+                //gravity = lastUDPUpdate.gravity;
+                //totalFall = lastUDPUpdate.totalFall;
+                //completeFall = lastUDPUpdate.completeFall;
+                totalHitPoints = lastUDPUpdate.totalHitPoints;
+                hitPoints = lastUDPUpdate.hitPoints;
+                totalArmorPoints = lastUDPUpdate.totalArmorPoints;
+                armorPoints = lastUDPUpdate.armorPoints;
+                knockBackX = lastUDPUpdate.knockBackX;
+                //isDead = lastUDPUpdate.isDead;
+                armorHead = lastUDPUpdate.armorHead;
+                armorChest = lastUDPUpdate.armorChest;
+                armorLegs = lastUDPUpdate.armorLegs;
+                armorFeet = lastUDPUpdate.armorFeet;
+                armorHeadLevel = lastUDPUpdate.armorHeadLevel;
+                armorChestLevel = lastUDPUpdate.armorChestLevel;
+                armorLegsLevel = lastUDPUpdate.armorLegsLevel;
+                armorFeetLevel = lastUDPUpdate.armorFeetLevel;
+                selectedItem = lastUDPUpdate.selectedItem;
+                invulnerable = lastUDPUpdate.invulnerable;
+                insideRobot = lastUDPUpdate.insideRobot;
+                currentResourceType = lastUDPUpdate.currentResourceType;
+                //currentHPRegen = lastUDPUpdate.currentHPRegen;
+                //currentHPRegenRate = lastUDPUpdate.currentHPRegenRate;
+                //attackBonus = lastUDPUpdate.attackBonus;
+                //isTryingToFlap = lastUDPUpdate.isTryingToFlap;
+                xp = lastUDPUpdate.xp;
+                if (lastUDPUpdate.robotActive) {
+                    robot.setIsActivated(true);
+                } else {
+                    robot.setIsActivated(false);
+                }
+                if (!lastUDPUpdate.oobabooActive) {
+                    oobaboo = null;
+                }
+
+                //adjust mapX for clients to make movement more smooth
+                //we're predicting where the player should be
+                //and making adjustments if needed
+
+                if (lastUDPUpdate.id == this.getId()) {
+                    if (!isStill) {
+                        int x = mapX;
+                        if (facing == Facing.RIGHT) {
+                            if (x == lastMapX) {
+                                x += xMoveSize;
+                            } else if (x < lastMapX) {
+                                x = lastMapX + xMoveSize;
+                            }
+                        } else if (facing == Facing.LEFT && registry.getGameController().isKeyDown(Settings.buttonMoveLeft)) {
+                            if (x == lastMapX) {
+                                x -= xMoveSize;
+                            } else if (mapX > lastMapX) {
+                                x = lastMapX - xMoveSize;
+                            }
+                        }
+                        if (x - mapX > 0) {
+                            mapX += checkCollide(x - mapX);
+                        } else {
+                            mapX -= checkCollide(x - mapX);
+                        }
+                    }
+                }
+            }
+            lastUDPUpdate = null;
+            lastMapX = mapX;
         }
     }
 

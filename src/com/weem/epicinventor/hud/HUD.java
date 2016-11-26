@@ -157,6 +157,10 @@ public abstract class HUD {
         //To be overriden by specific huds to do the click event
     }
 
+    public void LoadMatchingItems() {
+        //To be overriden by the master hud
+    }
+
     public boolean handleReleased(Point clickPoint) {
         HUDArea hudArea = null;
         boolean ret = false;
@@ -194,6 +198,9 @@ public abstract class HUD {
     }
 
     public void togglePauseHUD() {
+    }
+
+    public void showOobabooHUD() {
     }
 
     public void keyEnterPressed() {

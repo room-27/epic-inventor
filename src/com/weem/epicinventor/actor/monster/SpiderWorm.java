@@ -21,9 +21,9 @@ public class SpiderWorm extends Monster {
         displayName = "Spider Worm";
 
         monsterManager = mm;
-        
+
         difficultyFactor = 1.00f;
-        
+
         adjustHPForLevel();
 
         topOffset = 0;
@@ -41,7 +41,10 @@ public class SpiderWorm extends Monster {
         dropChances.addDropChance("Web", 75.0f, 1, 1);
         dropChances.addDropChance("Silk", 100.0f, 1, 1);
         dropChances.addDropChance("Skin", 75.0f, 2, 3);
- 
+        dropChances.addDropChance("WeemsDiceBag", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("ForrestsLaptop", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("BrandonsAbacus", 0.20f, 1, 1); //1 in 500 chance
+
         ai = new AI(registry, this);
         ai.clearGoals();
         ai.addGoal(AI.GoalType.ATTACK_PLAYER_RANGED_AGGRESSIVE, "", (Rand.getRange(0, 1) + Rand.getFloat()));
@@ -57,7 +60,6 @@ public class SpiderWorm extends Monster {
     public void shoot(Point targetPoint) {
         if (actionMode != ActionMode.ATTACKING) {
             actionMode = ActionMode.ATTACKING;
-            stateChanged = true;
         }
         if (canFire) {
             registry.getProjectileManager().createProjectile(this,

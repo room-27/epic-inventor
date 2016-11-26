@@ -330,7 +330,7 @@ public class Projectile {
             if (isDirty) {
                 stopSound();
                 if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                    if (registry.getNetworkThread().readyForUpdates) {
+                    if (registry.getNetworkThread().readyForUpdates()) {
                         UpdateProjectile up = new UpdateProjectile();
                         up.id = this.getId();
                         up.action = "Destroy";
@@ -396,5 +396,8 @@ public class Projectile {
              * g.setColor(Color.red); g.drawRect(xPos - 1, yPos - 1, 2, 2);
              */
         }
+    }
+
+    public void cleanUp() {
     }
 }

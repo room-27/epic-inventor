@@ -9,7 +9,7 @@ import java.awt.event.*;
 public class Game extends JFrame implements WindowListener {
 
     private static int DEFAULT_FPS = 30;
-    public static String VERSION = "0.7.0";
+    public static String VERSION = "1.0.1";
     public static boolean RELEASE = false;
     public static String loadingText = "Loading";
     private GamePanel gp;

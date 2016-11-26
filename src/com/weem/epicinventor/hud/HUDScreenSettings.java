@@ -232,26 +232,27 @@ public class HUDScreenSettings extends HUD {
                     Settings.resolution = currentResolution;
                     Settings.volumeMusic = (int) currentVolumeMusic;
                     Settings.volumeFX = (int) currentVolumeFX;
+                    registry.isSaving = false;
                     Settings.save();
                     hudManager.updateMusicVolume();
                     hudManager.unloadHUD(name);
                     hudManager.loadHUD(HUDManager.HUDType.ScreenMain);
                 } else if (hudArea.getType().equals("jdk")) {
-                    String url = "http://epicinventor.com/forum/index.php?topic=851.0";
+                    String url = "http://forums.epicinventor.com/index.php?topic=851.0";
 
                     try {
                         Desktop.getDesktop().browse(java.net.URI.create(url));
                     } catch (Exception e) {
                     }
                 } else if (hudArea.getType().equals("donate")) {
-                    String url = "http://epicinventor.com/donate.php";
+                    String url = "http://www.epicinventor.com/donate.html";
 
                     try {
                         Desktop.getDesktop().browse(java.net.URI.create(url));
                     } catch (Exception e) {
                     }
                 } else if (hudArea.getType().equals("help")) {
-                    String url = "http://epicinventor.com/help";
+                    String url = "http://www.epicinventor.com/help.html";
 
                     try {
                         Desktop.getDesktop().browse(java.net.URI.create(url));

@@ -1,6 +1,7 @@
 package com.weem.epicinventor.placeable;
 
 import com.weem.epicinventor.*;
+import com.weem.epicinventor.actor.*;
 import com.weem.epicinventor.actor.monster.*;
 import com.weem.epicinventor.inventory.*;
 import com.weem.epicinventor.network.*;
@@ -15,6 +16,7 @@ import java.util.*;
 public abstract class Placeable implements Serializable {
 
     private static final long serialVersionUID = 10000L;
+    protected transient boolean shouldRender = true;
     protected String id = "";
     transient protected Registry registry;
     protected PlaceableManager placeableManager;
@@ -58,6 +60,7 @@ public abstract class Placeable implements Serializable {
     protected boolean facingRight = true;
     protected Rectangle spriteRect;
     private long lastDamage = 0;
+    transient private Player destroyingPlayer;
 
     public enum State {
 
@@ -140,9 +143,10 @@ public abstract class Placeable implements Serializable {
     public void toggled() {
     }
 
-    public boolean setDestroying(boolean destroying) {
+    public boolean setDestroying(Player p, boolean destroying) {
         destroyingTime = 0;
         isDestroying = destroying;
+        destroyingPlayer = p;
         return true;
     }
 
@@ -162,10 +166,8 @@ public abstract class Placeable implements Serializable {
                     SoundClip cl = new SoundClip(registry, "Monster/Chew", getCenterPoint());
                 }
                 if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                    if (registry.getNetworkThread().readyForUpdates) {
+                    if (registry.getNetworkThread().readyForUpdates()) {
                         UpdatePlaceable up = new UpdatePlaceable(this.getId());
-                        up.hitPoints = this.getHitPoints();
-                        up.totalHitPoints = this.getTotalHitPoints();
                         up.source = source;
                         up.dataInt = damage;
                         up.action = "ApplyDamage";
@@ -195,6 +197,10 @@ public abstract class Placeable implements Serializable {
         }
     }
 
+    public Player getDestroyingPlayer() {
+        return destroyingPlayer;
+    }
+
     public boolean isDirty() {
         return isDirty;
     }
@@ -202,10 +208,8 @@ public abstract class Placeable implements Serializable {
     public void destroy() {
         isDirty = true;
         if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlaceable up = new UpdatePlaceable(this.getId());
-                up.hitPoints = this.getHitPoints();
-                up.totalHitPoints = this.getTotalHitPoints();
                 up.action = "IsDirty";
                 registry.getNetworkThread().sendData(up);
             }
@@ -415,27 +419,29 @@ public abstract class Placeable implements Serializable {
             }
         }
 
-        if (isBuilding) {
-            buildingTime += registry.getImageLoader().getPeriod();
-            if ((buildingTime / 1000) >= totalBuildTime) {
-                buildingTime = 0;
-                isBuilding = false;
-                animateStart();
-                if (!type.isEmpty()) {
-                    registry.showMessage("Success", type + " has finished building!");
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            if (isBuilding) {
+                buildingTime += registry.getImageLoader().getPeriod();
+                if ((buildingTime / 1000) >= totalBuildTime) {
+                    buildingTime = 0;
+                    isBuilding = false;
+                    animateStart();
+                    if (!type.isEmpty()) {
+                        registry.showMessage("Success", type + " has finished building!");
+                    }
+                }
+            }
+
+            if (isDestroying) {
+                destroyingTime += registry.getImageLoader().getPeriod();
+                if ((destroyingTime / 1000) >= DESTROY_TIME) {
+                    destroyingTime = 0;
+                    isDestroying = false;
+                    placeableManager.placeableDoneDestroying(this);
                 }
             }
         }
-
-        if (isDestroying) {
-            destroyingTime += registry.getImageLoader().getPeriod();
-            if ((destroyingTime / 1000) >= DESTROY_TIME) {
-                destroyingTime = 0;
-                isDestroying = false;
-                placeableManager.placeableDoneDestroying(this);
-            }
-        }
-
+        
         //check status of no power
         if (!isPowered) {
             long p = registry.getImageLoader().getPeriod();
@@ -449,21 +455,29 @@ public abstract class Placeable implements Serializable {
             }
         }
 
-        if (hitPoints <= 0) {
-            if (!type.isEmpty()) {
-                registry.showMessage("Error", type + " has been destroyed!");
-            }
-            SoundClip cl = new SoundClip(registry, "Placeable/Destroy", getCenterPoint());
+        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            if (hitPoints <= 0) {
+                if (!type.isEmpty()) {
+                    registry.showMessage("Error", type + " has been destroyed!");
+                }
+                SoundClip cl = new SoundClip(registry, "Placeable/Destroy", getCenterPoint());
 
-            BufferedImage im = null;
-            if (isAnimating) {
-                im = registry.getImageLoader().getImage(standardImage, currentAnimationFrame);
-            } else {
-                im = registry.getImageLoader().getImage(standardImage);
-            }
-            registry.getPixelizeManager().pixelize(im, mapX, mapY);
+                BufferedImage im = null;
+                if (isAnimating) {
+                    im = registry.getImageLoader().getImage(standardImage, currentAnimationFrame);
+                } else {
+                    im = registry.getImageLoader().getImage(standardImage);
+                }
+                registry.getPixelizeManager().pixelize(im, mapX, mapY);
 
-            isDirty = true;
+                isDirty = true;
+            }
+        }
+
+        if (getPerimeter().intersects(placeableManager.getPanelRect())) {
+            shouldRender = true;
+        } else {
+            shouldRender = false;
         }
     }
 
@@ -488,192 +502,221 @@ public abstract class Placeable implements Serializable {
     }
 
     public void render(Graphics g) {
-        if (currentState != Placeable.State.New) {
-            BufferedImage im;
-            BufferedImage imLeft;
-            AffineTransform tx;
-            AffineTransformOp op;
+        if (shouldRender) {
+            if (currentState != Placeable.State.New) {
+                BufferedImage im;
+                BufferedImage imLeft;
+                AffineTransform tx;
+                AffineTransformOp op;
 
-            int xPos = placeableManager.mapToPanelX(mapX);
-            int yPos = placeableManager.mapToPanelY(mapY);
+                int xPos = placeableManager.mapToPanelX(mapX);
+                int yPos = placeableManager.mapToPanelY(mapY);
 
-            //flip the yPos since drawing happens top down versus bottom up
-            yPos = placeableManager.getPHeight() - yPos;
+                //flip the yPos since drawing happens top down versus bottom up
+                yPos = placeableManager.getPHeight() - yPos;
 
-            //subtract the height since points are bottom left and drawing starts from top left
-            yPos -= height;
+                //subtract the height since points are bottom left and drawing starts from top left
+                yPos -= height;
 
-            if (isBuilding) {
-                if (buildingImage != null) {
-                    g.drawImage(buildingImage, xPos, yPos, null);
-                }
-
-                float timeSpent;
-                float timeLeft;
-                float percentage;
-                int hours = 0;
-                int minutes = 0;
-                int seconds = 0;
-
-                int x = mapX + (width / 2);
-                int y = mapY + height;
-
-                timeSpent = (float) (buildingTime / 1000f);
-                timeLeft = (float) totalBuildTime - timeSpent;
-                if (timeLeft < 0) {
-                    timeLeft = 0;
-                }
-
-                if (timeLeft >= 3600) {
-                    hours = (int) timeLeft / 3600;
-                    timeLeft -= (hours * 3600);
-                }
-                if (timeLeft >= 60) {
-                    minutes = (int) timeLeft / 60;
-                    timeLeft -= (minutes * 60);
-                }
-                seconds = (int) timeLeft + 1;
-
-                percentage = ((float) timeSpent / (float) totalBuildTime) * 100;
-
-                placeableManager.displayProgress(g,
-                        x,
-                        y,
-                        (int) percentage,
-                        hours + ":"
-                        + String.format("%02d", minutes) + ":"
-                        + String.format("%02d", seconds));
-            } else if (!isPowered) {
-                if (buildingImage != null) {
-                    g.drawImage(buildingImage, xPos, yPos, null);
-                    if (noPowerShow) {
-                        Point centerPoint = getCenterPoint();
-                        centerPoint.x -= NO_POWER_WIDTH / 2;
-                        centerPoint.y -= NO_POWER_HEIGHT / 2;
-
-                        xPos = placeableManager.mapToPanelX(centerPoint.x);
-                        yPos = placeableManager.mapToPanelY(centerPoint.y);
-
-                        //flip the yPos since drawing happens top down versus bottom up
-                        yPos = placeableManager.getPHeight() - yPos;
-
-                        //subtract the height since points are bottom left and drawing starts from top left
-                        yPos -= NO_POWER_HEIGHT;
-
-                        g.drawImage(registry.getImageLoader().getImage("Misc/NoPower"), xPos, yPos, null);
+                if (isBuilding) {
+                    if (buildingImage != null) {
+                        g.drawImage(buildingImage, xPos, yPos, null);
                     }
-                    /*
-                     * BufferedImage im;
-                     *
-                     * int xPos = placeableManager.mapToPanelX(mapX); int yPos =
-                     * placeableManager.mapToPanelY(mapY);
-                     *
-                     * //flip the yPos since drawing happens top down versus
-                     * bottom up yPos = placeableManager.getPHeight() - yPos;
-                     *
-                     * //subtract the height since points are bottom left and
-                     * drawing starts from top left yPos -= height;
-                     */
-                }
-            } else {
-                if (isAnimating) {
-                    im = registry.getImageLoader().getImage(standardImage, currentAnimationFrame);
+
+                    float timeSpent;
+                    float timeLeft;
+                    float percentage;
+                    int hours = 0;
+                    int minutes = 0;
+                    int seconds = 0;
+
+                    int x = mapX + (width / 2);
+                    int y = mapY + height;
+
+                    timeSpent = (float) (buildingTime / 1000f);
+                    timeLeft = (float) totalBuildTime - timeSpent;
+                    if (timeLeft < 0) {
+                        timeLeft = 0;
+                    }
+
+                    if (timeLeft >= 3600) {
+                        hours = (int) timeLeft / 3600;
+                        timeLeft -= (hours * 3600);
+                    }
+                    if (timeLeft >= 60) {
+                        minutes = (int) timeLeft / 60;
+                        timeLeft -= (minutes * 60);
+                    }
+                    seconds = (int) timeLeft + 1;
+
+                    percentage = ((float) timeSpent / (float) totalBuildTime) * 100;
+
+                    placeableManager.displayProgress(g,
+                            x,
+                            y,
+                            (int) percentage,
+                            hours + ":"
+                            + String.format("%02d", minutes) + ":"
+                            + String.format("%02d", seconds));
+                } else if (!isPowered) {
+                    if (buildingImage != null) {
+                        g.drawImage(buildingImage, xPos, yPos, null);
+                        if (noPowerShow) {
+                            Point centerPoint = getCenterPoint();
+                            centerPoint.x -= NO_POWER_WIDTH / 2;
+                            centerPoint.y -= NO_POWER_HEIGHT / 2;
+
+                            xPos = placeableManager.mapToPanelX(centerPoint.x);
+                            yPos = placeableManager.mapToPanelY(centerPoint.y);
+
+                            //flip the yPos since drawing happens top down versus bottom up
+                            yPos = placeableManager.getPHeight() - yPos;
+
+                            //subtract the height since points are bottom left and drawing starts from top left
+                            yPos -= NO_POWER_HEIGHT;
+
+                            g.drawImage(registry.getImageLoader().getImage("Misc/NoPower"), xPos, yPos, null);
+                        }
+                        /*
+                         * BufferedImage im;
+                         *
+                         * int xPos = placeableManager.mapToPanelX(mapX); int
+                         * yPos = placeableManager.mapToPanelY(mapY);
+                         *
+                         * //flip the yPos since drawing happens top down
+                         * versus bottom up yPos = placeableManager.getPHeight()
+                         * - yPos;
+                         *
+                         * //subtract the height since points are bottom left
+                         * and drawing starts from top left yPos -= height;
+                         */
+                    }
                 } else {
-                    im = registry.getImageLoader().getImage(standardImage);
-                    if (currentState == State.NotPlaced) {
-                        if (placeableManager.isOverOther() || placeableManager.doesRectContainBlocks(mapX + 1, mapY + 1, width - 2, height - 2)) {
-                            im = cantPlaceImage;
-                        } else {
-                            im = canPlaceImage;
-                        }
-                    }
-                }
-
-                if (im != null) {
-                    if (facingRight) {
-                        g.drawImage(im, xPos, yPos, null);
+                    if (isAnimating) {
+                        im = registry.getImageLoader().getImage(standardImage, currentAnimationFrame);
                     } else {
-                        tx = AffineTransform.getScaleInstance(1, -1);
-                        tx = AffineTransform.getScaleInstance(-1, 1);
-                        tx.translate(-width, 0);
-                        op = new AffineTransformOp(tx, AffineTransformOp.TYPE_BILINEAR);
-                        imLeft = op.filter(im, null);
-                        if (imLeft != null) {
-                            g.drawImage(imLeft, xPos, yPos, null);
+                        im = registry.getImageLoader().getImage(standardImage);
+                        if (currentState == State.NotPlaced) {
+                            if (placeableManager.isOverOther() || placeableManager.doesRectContainBlocks(mapX + 1, mapY + 1, width - 2, height - 2)) {
+                                im = cantPlaceImage;
+                            } else {
+                                im = canPlaceImage;
+                            }
+                        }
+                    }
+
+                    if (im != null) {
+                        if (facingRight) {
+                            g.drawImage(im, xPos, yPos, null);
+                        } else {
+                            tx = AffineTransform.getScaleInstance(1, -1);
+                            tx = AffineTransform.getScaleInstance(-1, 1);
+                            tx.translate(-width, 0);
+                            op = new AffineTransformOp(tx, AffineTransformOp.TYPE_BILINEAR);
+                            imLeft = op.filter(im, null);
+                            if (imLeft != null) {
+                                g.drawImage(imLeft, xPos, yPos, null);
+                            }
                         }
                     }
                 }
-            }
 
-            if (isDestroying) {
-                float timeSpent;
-                float timeLeft;
-                float percentage;
-                int hours = 0;
-                int minutes = 0;
-                int seconds = 0;
+                if (isDestroying) {
+                    float timeSpent;
+                    float timeLeft;
+                    float percentage;
+                    int hours = 0;
+                    int minutes = 0;
+                    int seconds = 0;
 
-                int x = mapX + (width / 2);
-                int y = mapY + height;
+                    int x = mapX + (width / 2);
+                    int y = mapY + height;
 
-                timeSpent = (float) (destroyingTime / 1000f);
-                timeLeft = (float) DESTROY_TIME - timeSpent;
-                if (timeLeft < 0) {
-                    timeLeft = 0;
+                    timeSpent = (float) (destroyingTime / 1000f);
+                    timeLeft = (float) DESTROY_TIME - timeSpent;
+                    if (timeLeft < 0) {
+                        timeLeft = 0;
+                    }
+
+                    if (timeLeft >= 3600) {
+                        hours = (int) timeLeft / 3600;
+                        timeLeft -= (hours * 3600);
+                    }
+                    if (timeLeft >= 60) {
+                        minutes = (int) timeLeft / 60;
+                        timeLeft -= (minutes * 60);
+                    }
+                    seconds = (int) timeLeft + 1;
+
+                    percentage = ((float) timeSpent / (float) DESTROY_TIME) * 100;
+
+                    placeableManager.displayProgress(g,
+                            x,
+                            y,
+                            (int) percentage,
+                            hours + ":"
+                            + String.format("%02d", minutes) + ":"
+                            + String.format("%02d", seconds));
                 }
 
-                if (timeLeft >= 3600) {
-                    hours = (int) timeLeft / 3600;
-                    timeLeft -= (hours * 3600);
+                if (hitPoints < totalHitPoints) {
+                    float percentage;
+
+                    int x = mapX + (width / 2);
+                    int y = mapY + height;
+
+                    percentage = ((float) hitPoints / (float) totalHitPoints) * 100;
+
+                    placeableManager.displayHP(g,
+                            x,
+                            y,
+                            (int) percentage);
                 }
-                if (timeLeft >= 60) {
-                    minutes = (int) timeLeft / 60;
-                    timeLeft -= (minutes * 60);
-                }
-                seconds = (int) timeLeft + 1;
 
-                percentage = ((float) timeSpent / (float) DESTROY_TIME) * 100;
-
-                placeableManager.displayProgress(g,
-                        x,
-                        y,
-                        (int) percentage,
-                        hours + ":"
-                        + String.format("%02d", minutes) + ":"
-                        + String.format("%02d", seconds));
+                /*
+                 * if (spriteRect != null) { xPos =
+                 * placeableManager.mapToPanelX(spriteRect.x); yPos =
+                 * placeableManager.mapToPanelY(spriteRect.y);
+                 *
+                 * //flip the yPos since drawing happens top down versus bottom
+                 * up yPos = placeableManager.getPHeight() - yPos;
+                 *
+                 * //subtract the height since points are bottom left and
+                 * drawing starts from top left yPos -= height;
+                 *
+                 *
+                 * g.setColor(Color.blue); g.drawRect(xPos, yPos,
+                 * spriteRect.width, spriteRect.height); }
+                 */
             }
-
-            if (hitPoints < totalHitPoints) {
-                float percentage;
-
-                int x = mapX + (width / 2);
-                int y = mapY + height;
-
-                percentage = ((float) hitPoints / (float) totalHitPoints) * 100;
-
-                placeableManager.displayHP(g,
-                        x,
-                        y,
-                        (int) percentage);
-            }
-
-            /*
-             * if (spriteRect != null) { xPos =
-             * placeableManager.mapToPanelX(spriteRect.x); yPos =
-             * placeableManager.mapToPanelY(spriteRect.y);
-             *
-             * //flip the yPos since drawing happens top down versus bottom up
-             * yPos = placeableManager.getPHeight() - yPos;
-             *
-             * //subtract the height since points are bottom left and drawing
-             * starts from top left yPos -= height;
-             *
-             *
-             * g.setColor(Color.blue); g.drawRect(xPos, yPos, spriteRect.width,
-             * spriteRect.height);
-            }
-             */
         }
+    }
+
+    public UDPPlaceable createUpdate() {
+        UDPPlaceable udpUpdate = new UDPPlaceable(id);
+        udpUpdate.isActive = isActive;
+        udpUpdate.isBuilding = isBuilding;
+        udpUpdate.buildingTime = buildingTime;
+        udpUpdate.totalBuildTime = totalBuildTime;
+        udpUpdate.isDirty = isDirty;
+        udpUpdate.isDestroying = isDestroying;
+        udpUpdate.totalHitPoints = totalHitPoints;
+        udpUpdate.hitPoints = hitPoints;
+        udpUpdate.destroyingTime = destroyingTime;
+
+        return udpUpdate;
+    }
+
+    public void processUpdate(UDPPlaceable udpUpdate) {
+        isActive = udpUpdate.isActive;
+        isBuilding = udpUpdate.isBuilding;
+        buildingTime = udpUpdate.buildingTime;
+        totalBuildTime = udpUpdate.totalBuildTime;
+        isDirty = udpUpdate.isDirty;
+        isDestroying = udpUpdate.isDestroying;
+        totalHitPoints = udpUpdate.totalHitPoints;
+        hitPoints = udpUpdate.hitPoints;
+        destroyingTime = udpUpdate.destroyingTime;
     }
 
     private void readObject(ObjectInputStream aInputStream) throws Exception {

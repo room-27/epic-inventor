@@ -27,6 +27,13 @@ public class ReturningProjectile extends Projectile {
     public void update() {
         Point ePoint = null;
 
+        if (source != null) {
+            if (!source.isProjectileOut()) {
+                stopSound();
+                isDirty = true;
+            }
+        }
+
         if (!isDirty) {
             if (returning) {
                 if (mapX >= end.x - 20 && mapX <= end.x + 20 && mapY >= end.y - 20 && mapY <= end.y + 20) {
@@ -114,7 +121,7 @@ public class ReturningProjectile extends Projectile {
                 if (isDirty) {
                     stopSound();
                     if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                        if (registry.getNetworkThread().readyForUpdates) {
+                        if (registry.getNetworkThread().readyForUpdates()) {
                             UpdateProjectile up = new UpdateProjectile();
                             up.id = this.getId();
                             up.action = "Destroy";
@@ -126,6 +133,19 @@ public class ReturningProjectile extends Projectile {
                     }
                 }
             }
+        } else {
+            stopSound();
+            if (source != null) {
+                source.projectileReturned();
+            }
+        }
+    }
+
+    @Override
+    public void cleanUp() {
+        stopSound();
+        if (source != null) {
+            source.projectileReturned();
         }
     }
 }

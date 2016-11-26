@@ -25,6 +25,7 @@ public class Settings {
     public static int buttonRobot;
     public static int buttonInventory;
     public static int buttonPause;
+    private static Registry registry;
     private static ArrayList resolutions;
     private static ArrayList<Player> players;
     private static ArrayList<BlockManager> blockManagers;
@@ -37,6 +38,8 @@ public class Settings {
 
     public static void init(GameController gc, Registry r) {
         int version;
+
+        registry = r;
 
         resolutions = new ArrayList();
         resolutions.add("800x600");
@@ -136,12 +139,12 @@ public class Settings {
                 players.add((Player) playerInfo.readObject());
                 blockManagers.add((BlockManager) playerInfo.readObject());
                 placeableManagers.add((PlaceableManager) playerInfo.readObject());
-                
+
                 MonsterManager mm = null;
                 if (version >= 2) {
                     mm = (MonsterManager) playerInfo.readObject();
                 }
-                if(mm == null) {
+                if (mm == null) {
                     mm = new MonsterManager(gc, r);
                 }
                 monsterManagers.add(mm);
@@ -174,7 +177,15 @@ public class Settings {
         }
     }
 
-    public static void save() {
+    public static boolean save() {
+        if (registry.isSaving) {
+            return false;
+        }
+
+        boolean status = true;
+
+        registry.isSaving = true;
+
         resolutions.add("800x600");
         resolutions.add("1024x768");
         resolutions.add("1152x864");
@@ -223,31 +234,42 @@ public class Settings {
             moveFile("SettingsTemp.dat", "Settings.dat");
             EIError.debugMsg("Saved Settings", EIError.ErrorLevel.Notice);
         } catch (Exception e) {
+            status = false;
             EIError.debugMsg("Couldn't save settings " + e.getMessage(), EIError.ErrorLevel.Error);
         }
 
         //try to save the players
         for (int i = 1; i <= NUMBER_OF_PLAYER_SLOTS; i++) {
             try {
-                //if(players.get(i - 1) != null) {
-                FileOutputStream playerFile = new FileOutputStream("PlayerTemp.dat");
-                ObjectOutputStream playerInfo = new ObjectOutputStream(playerFile);
+                if (player == i - 1) {
+                    FileOutputStream playerFile = new FileOutputStream("PlayerTemp.dat");
+                    ObjectOutputStream playerInfo = new ObjectOutputStream(playerFile);
 
-                playerInfo.writeObject(new Integer(2)); //settings file version
-                playerInfo.writeObject(players.get(i - 1));
-                playerInfo.writeObject(blockManagers.get(i - 1));
-                playerInfo.writeObject(placeableManagers.get(i - 1));
-                playerInfo.writeObject(monsterManagers.get(i - 1));
+                    playerInfo.writeObject(new Integer(2)); //settings file version
+                    playerInfo.writeObject(players.get(i - 1));
+                    if (registry.getGameController().multiplayerMode != GameController.MultiplayerMode.CLIENT && player == i - 1) {
+                        blockManagers.set(i - 1, registry.getBlockManager());
+                        placeableManagers.set(i - 1, registry.getPlaceableManager());
+                        monsterManagers.set(i - 1, registry.getMonsterManager());
+                    }
+                    playerInfo.writeObject(blockManagers.get(i - 1));
+                    playerInfo.writeObject(placeableManagers.get(i - 1));
+                    playerInfo.writeObject(monsterManagers.get(i - 1));
 
-                playerInfo.close();
+                    playerInfo.close();
 
-                moveFile("PlayerTemp.dat", "Player" + i + ".dat");
-                EIError.debugMsg("Saved Player " + i, EIError.ErrorLevel.Notice);
-                //}
+                    moveFile("PlayerTemp.dat", "Player" + i + ".dat");
+                    EIError.debugMsg("Saved Player " + i, EIError.ErrorLevel.Notice);
+                }
             } catch (Exception e) {
+                status = false;
                 EIError.debugMsg("Couldn't save Player " + i + " " + e.getMessage(), EIError.ErrorLevel.Error);
             }
         }
+
+        registry.isSaving = false;
+
+        return status;
     }
 
     public static Point getResolution(int i) {
@@ -271,6 +293,10 @@ public class Settings {
         return players;
     }
 
+    public static void invalidatePlayerSelect() {
+        player = -1;
+    }
+
     public static void setPlayer(int i, Player p) {
         if (players.size() > i) {
             players.set(i, p);
@@ -291,37 +317,44 @@ public class Settings {
 
     public static void loadPlayer(Registry registry) {
         Player p = (Player) getPlayers().get(player);
-        p.setTransient(registry);
+        if (p != null) {
+            p.setTransient(registry);
+        }
+
         GameController gc = registry.getGameController();
         registry.getPlayerManager().clearPlayers();
         registry.getPlayerManager().registerPlayer(p);
         BlockManager bm = (BlockManager) blockManagers.get(player);
+        bm.name = "Saved";
+        bm = (BlockManager) bm.clone();
+        bm.name = "Clone";
         bm.setTransient(registry);
         gc.setBlockManager(bm);
-        PlaceableManager pm = (PlaceableManager) placeableManagers.get(player);
+        PlaceableManager pm = (PlaceableManager) placeableManagers.get(player).clone();
         gc.setPlaceableManager(pm);
-        MonsterManager mm = (MonsterManager) monsterManagers.get(player);
+        MonsterManager mm = (MonsterManager) monsterManagers.get(player).clone();
         mm.setTransient(registry);
         gc.setMonsterManager(mm);
 
-        p.resetPlayer();
+        if (p != null) {
+            p.resetPlayer();
+        }
 
         //unloadUnused();
     }
 
-    public static void unloadUnused() {
-        if (player > -1) {
-            for (int i = 0; i < NUMBER_OF_PLAYER_SLOTS; i++) {
-                if (i != player) {
-                    players.set(i, null);
-                    blockManagers.set(i, null);
-                    placeableManagers.set(i, null);
-                    monsterManagers.set(i, null);
-                }
-            }
-        }
-    }
-
+//    public static void unloadUnused() {
+//        if (player > -1) {
+//            for (int i = 0; i < NUMBER_OF_PLAYER_SLOTS; i++) {
+//                if (i != player) {
+//                    players.set(i, null);
+//                    blockManagers.set(i, null);
+//                    placeableManagers.set(i, null);
+//                    monsterManagers.set(i, null);
+//                }
+//            }
+//        }
+//    }
     public static ArrayList getPlayerList() {
         ArrayList names = new ArrayList();
 

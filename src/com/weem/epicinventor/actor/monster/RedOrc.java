@@ -21,7 +21,7 @@ public class RedOrc extends Monster {
         displayName = "Red Orc";
 
         monsterManager = mm;
-        
+
         difficultyFactor = 1.00f;
 
         adjustHPForLevel();
@@ -42,7 +42,10 @@ public class RedOrc extends Monster {
         dropChances.addDropChance("Silver", 20.0f, 1, 3);
         dropChances.addDropChance("Tusk", 15.0f, 1, 2);
         dropChances.addDropChance("Skin", 15.0f, 1, 1);
- 
+        dropChances.addDropChance("WeemsDiceBag", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("ForrestsLaptop", 0.20f, 1, 1); //1 in 500 chance
+        dropChances.addDropChance("BrandonsAbacus", 0.20f, 1, 1); //1 in 500 chance
+
         ai = new AI(registry, this);
         ai.clearGoals();
         ai.addGoal(AI.GoalType.ATTACK_PLAYER_RANGED_AGGRESSIVE, "", (Rand.getRange(0, 1) + Rand.getFloat()));
@@ -58,7 +61,6 @@ public class RedOrc extends Monster {
     public void shoot(Point targetPoint) {
         if (actionMode != ActionMode.ATTACKING) {
             actionMode = ActionMode.ATTACKING;
-            stateChanged = true;
         }
         if (canFire) {
             registry.getProjectileManager().createProjectile(this,

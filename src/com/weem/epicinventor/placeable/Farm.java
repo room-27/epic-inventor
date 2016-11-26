@@ -138,10 +138,8 @@ public abstract class Farm extends Building {
     public boolean addItem(int slot, String name, int qty) {
         if (inventory.addToInventory(slot, name, qty) == 0) {
             if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.NONE && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     UpdatePlaceable up = new UpdatePlaceable(this.getId());
-                    up.hitPoints = this.getHitPoints();
-                    up.totalHitPoints = this.getTotalHitPoints();
                     up.inventory = inventory;
                     up.action = "InventoryUpdate";
                     registry.getNetworkThread().sendData(up);
@@ -156,10 +154,8 @@ public abstract class Farm extends Building {
     public boolean addItem(String name, int qty) {
         if (inventory.addToInventory(0, name, qty) == 0) {
             if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.NONE && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     UpdatePlaceable up = new UpdatePlaceable(this.getId());
-                    up.hitPoints = this.getHitPoints();
-                    up.totalHitPoints = this.getTotalHitPoints();
                     up.inventory = inventory;
                     up.action = "InventoryUpdate";
                     registry.getNetworkThread().sendData(up);
@@ -171,13 +167,11 @@ public abstract class Farm extends Building {
         }
     }
 
-    public boolean addItem(int slot, String name, int qty, int level) {
-        if (inventory.addToInventory(slot, name, qty, level) == 0) {
+    public boolean addItem(int slot, String name, int qty, int level, boolean stack) {
+        if (inventory.addToInventory(slot, name, qty, level, stack) == 0) {
             if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.NONE && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     UpdatePlaceable up = new UpdatePlaceable(this.getId());
-                    up.hitPoints = this.getHitPoints();
-                    up.totalHitPoints = this.getTotalHitPoints();
                     up.inventory = inventory;
                     up.action = "InventoryUpdate";
                     registry.getNetworkThread().sendData(up);
@@ -192,10 +186,8 @@ public abstract class Farm extends Building {
     public boolean addItem(String name, int qty, int level) {
         if (inventory.addToInventory(0, name, qty, level) == 0) {
             if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.NONE && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates) {
+                if (registry.getNetworkThread().readyForUpdates()) {
                     UpdatePlaceable up = new UpdatePlaceable(this.getId());
-                    up.hitPoints = this.getHitPoints();
-                    up.totalHitPoints = this.getTotalHitPoints();
                     up.inventory = inventory;
                     up.action = "InventoryUpdate";
                     registry.getNetworkThread().sendData(up);
@@ -210,10 +202,8 @@ public abstract class Farm extends Building {
     public void deleteInventory(int slot, int qty) {
         inventory.deleteInventory(slot, qty);
         if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlaceable up = new UpdatePlaceable(this.getId());
-                up.hitPoints = this.getHitPoints();
-                up.totalHitPoints = this.getTotalHitPoints();
                 up.inventory = inventory;
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);
@@ -224,10 +214,8 @@ public abstract class Farm extends Building {
     public void swapInventory(int from, int to) {
         inventory.swapInventoryLocations(from, to);
         if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates) {
+            if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlaceable up = new UpdatePlaceable(this.getId());
-                up.hitPoints = this.getHitPoints();
-                up.totalHitPoints = this.getTotalHitPoints();
                 up.inventory = inventory;
                 up.action = "InventoryUpdate";
                 registry.getNetworkThread().sendData(up);

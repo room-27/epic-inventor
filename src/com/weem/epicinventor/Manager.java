@@ -38,6 +38,10 @@ public abstract class Manager {
         return gameController.findNextFloor(xWorld, yWorld, height);
     }
     
+    public Rectangle getPanelRect() {
+        return gameController.getPanelRect();
+    }
+    
     public boolean isKeyDown(int k) {
         return gameController.isKeyDown(k);
     }

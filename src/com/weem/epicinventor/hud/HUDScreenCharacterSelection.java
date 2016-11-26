@@ -154,42 +154,30 @@ public class HUDScreenCharacterSelection extends HUD {
                     hudManager.unloadHUD(name);
                     hudManager.loadHUD(HUDManager.HUDType.ScreenNewCharacter);
                 } else if (hudArea.getType().equals("character_name1")) {
-                    //clicked
                     loadPlayer(hudArea, 0);
                 } else if (hudArea.getType().equals("character_name2")) {
-                    //clicked
                     loadPlayer(hudArea, 1);
                 } else if (hudArea.getType().equals("character_name3")) {
-                    //clicked
                     loadPlayer(hudArea, 2);
                 } else if (hudArea.getType().equals("character_name4")) {
-                    //clicked
                     loadPlayer(hudArea, 3);
                 } else if (hudArea.getType().equals("character_delete1")) {
-                    //clicked
-                    Settings.deletePlayer(0);
-                    Settings.setPlayer(0, null);
+                    hudManager.loadAreYourSure(0);
                 } else if (hudArea.getType().equals("character_delete2")) {
-                    //clicked
-                    Settings.deletePlayer(1);
-                    Settings.setPlayer(1, null);
+                    hudManager.loadAreYourSure(1);
                 } else if (hudArea.getType().equals("character_delete3")) {
-                    //clicked
-                    Settings.deletePlayer(2);
-                    Settings.setPlayer(2, null);
+                    hudManager.loadAreYourSure(2);
                 } else if (hudArea.getType().equals("character_delete4")) {
-                    //clicked
-                    Settings.deletePlayer(3);
-                    Settings.setPlayer(3, null);
+                    hudManager.loadAreYourSure(3);
                 } else if (hudArea.getType().equals("donate")) {
-                    String url = "http://epicinventor.com/donate.php";
+                    String url = "http://www.epicinventor.com/donate.html";
 
                     try {
                         Desktop.getDesktop().browse(java.net.URI.create(url));
                     } catch (Exception e) {
                     }
                 } else if (hudArea.getType().equals("help")) {
-                    String url = "http://epicinventor.com/help";
+                    String url = "http://www.epicinventor.com/help.html";
 
                     try {
                         Desktop.getDesktop().browse(java.net.URI.create(url));

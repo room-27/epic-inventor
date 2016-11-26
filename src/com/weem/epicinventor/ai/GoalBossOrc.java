@@ -200,7 +200,7 @@ public class GoalBossOrc extends Goal {
 
     private boolean doCharge(Actor actor, Player player) {
         boolean updatedPosition = false;
-        
+
         //returns true if done charging
         if (registry.currentTime >= nextMove) {
             return true;
@@ -223,12 +223,12 @@ public class GoalBossOrc extends Goal {
                 }
             }
         }
-        
-        if(!updatedPosition) {
+
+        if (!updatedPosition) {
             actor.updatePosition();
         }
-        
-        if(actor.getMapX() <= 0) {
+
+        if (actor.getMapX() <= 0) {
             return true;
         }
 
@@ -238,7 +238,7 @@ public class GoalBossOrc extends Goal {
     private boolean doJump(BossOrc actor, Player player) {
         //returns true if done charging
         if (registry.currentTime >= nextMove) {
-            if (actor.getVertMoveMode() == Actor.VertMoveMode.NOT_JUMPING) { 
+            if (actor.getVertMoveMode() == Actor.VertMoveMode.NOT_JUMPING) {
                 actor.updatePosition();
                 return true;
             }

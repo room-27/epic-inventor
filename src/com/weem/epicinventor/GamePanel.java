@@ -25,12 +25,13 @@ public class GamePanel extends JPanel implements Runnable {
     private Container container;
     private Game game;
     private GameController gameController;
-    private volatile boolean keySpacePressed = false;
-    private volatile boolean keyRightPressed = false;
-    private volatile boolean keyLeftPressed = false;
+    public volatile boolean keySpacePressed = false;
+    public volatile boolean keyRightPressed = false;
+    public volatile boolean keyLeftPressed = false;
     private volatile boolean keyUpPressed = false;
     private volatile boolean keyDownPressed = false;
-    private volatile boolean keyGatherPressed = false;
+    public volatile boolean keyGatherPressed = false;
+    public volatile boolean keyRobotPressed = false;
     private boolean[] keys = new boolean[65536];
 
     public GamePanel(Game g, long period, int w, int h) {
@@ -135,14 +136,18 @@ public class GamePanel extends JPanel implements Runnable {
             }
         } else if (keyCode == Settings.buttonPause && gameController.getIsInGame() && gameController.multiplayerMode == gameController.multiplayerMode.NONE) {
             togglePaused();
-        } else if (keyCode == KeyEvent.VK_ESCAPE) {
+        } else if (keyCode == KeyEvent.VK_ESCAPE && gameController.getIsInGame()) {
             gameController.togglePauseHUD();
         } else {
+            if (gameController.getIsInGame()) {
+                if (keyCode == Settings.buttonInventory) {
+                    gameController.toggleMasterHUD();
+                    return;
+                }
+            }
             if (!isPaused && !isMasterPaused) {
                 if (gameController.getIsInGame()) {
-                    if (keyCode == Settings.buttonInventory) {
-                        gameController.toggleMasterHUD();
-                    } else if (keyCode == Settings.buttonMoveLeft) {
+                    if (keyCode == Settings.buttonMoveLeft) {
                         if (!keyLeftPressed) {
                             keyLeftPressed = true;
                             keyRightPressed = false;
@@ -169,7 +174,10 @@ public class GamePanel extends JPanel implements Runnable {
                             gameController.startGather();
                         }
                     } else if (keyCode == Settings.buttonRobot) {
-                        gameController.robotToggleActivated();
+                        if (!keyRobotPressed) {
+                            keyRobotPressed = true;
+                            gameController.robotToggleActivated();
+                        }
                     } else if (keyCode == KeyEvent.VK_ENTER) {
                         gameController.keyEnterPressed();
                     } else if (keyCode == KeyEvent.VK_SHIFT) {
@@ -232,6 +240,8 @@ public class GamePanel extends JPanel implements Runnable {
         } else if (keyCode == Settings.buttonAction) {
             keyGatherPressed = false;
             gameController.stopActions();
+        } else if (keyCode == Settings.buttonRobot) {
+            keyRobotPressed = false;
         } else if (keyCode == KeyEvent.VK_SHIFT) {
             gameController.shiftRelease();
         }
@@ -305,7 +315,7 @@ public class GamePanel extends JPanel implements Runnable {
             pHeight = h;
 
             dbImage = null;
-            
+
             game.setFullScreen(false);
 
             //resize the panel
@@ -324,7 +334,7 @@ public class GamePanel extends JPanel implements Runnable {
         //resize the frame
         game.pack();
         game.setLocationRelativeTo(null);
-        
+
         if (w == 0 && h == 0) {
             //full screen
             game.setFullScreen(true);
@@ -371,7 +381,7 @@ public class GamePanel extends JPanel implements Runnable {
     @Override
     @SuppressWarnings({"SleepWhileInLoop", "CallToThreadYield"})
     public void run() {
-        long beforeTime, afterTime, timeDiff, sleepTime;
+        long b, a, beforeTime, afterTime, timeDiff, sleepTime;
         long overSleepTime = 0L;
         int noDelays = 0;
         long excess = 0L;
@@ -381,9 +391,19 @@ public class GamePanel extends JPanel implements Runnable {
         isRunning = true;
 
         while (isRunning) {
+            //b = System.nanoTime();
             gameUpdate();
+            //a = System.nanoTime();
+            //System.out.println("Update: " + ((a - b) / 1000000));
+            //b = System.nanoTime();
+            //if (((a - b) / 1000000) > 100) {
+            //    System.exit(0);
+            //}
             gameRender();
             paintScreen();
+            // a = System.nanoTime();
+            //System.out.println("Draw: " + ((a - b) / 1000000));
+            //System.out.println("----------");
 
             afterTime = System.nanoTime();
             timeDiff = afterTime - beforeTime;

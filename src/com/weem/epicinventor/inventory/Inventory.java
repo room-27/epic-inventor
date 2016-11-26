@@ -48,9 +48,9 @@ public class Inventory implements Serializable {
         if (invSlot.getQty() < 1) {
             return "";
         }
-        
+
         ItemType itemType = invSlot.getItemType();
-        if(itemType != null) {
+        if (itemType != null) {
             return itemType.getCategory();
         } else {
             return "";
@@ -72,9 +72,9 @@ public class Inventory implements Serializable {
         if (invSlot.getQty() < 1) {
             return "";
         }
-        
+
         ItemType itemType = invSlot.getItemType();
-        if(itemType != null) {
+        if (itemType != null) {
             return itemType.getType();
         } else {
             return "";
@@ -149,9 +149,9 @@ public class Inventory implements Serializable {
         if (invSlot.getQty() < 1) {
             return "";
         }
-        
+
         ItemType itemType = invSlot.getItemType();
-        if(itemType != null) {
+        if (itemType != null) {
             return itemType.getName();
         } else {
             return "";
@@ -173,9 +173,9 @@ public class Inventory implements Serializable {
         if (invSlot.getQty() < 1) {
             return "";
         }
-        
+
         ItemType itemType = invSlot.getItemType();
-        if(itemType != null) {
+        if (itemType != null) {
             return itemType.getImageName();
         } else {
             return "";
@@ -197,9 +197,9 @@ public class Inventory implements Serializable {
         if (invSlot.getQty() < 1) {
             return "";
         }
-        
+
         ItemType itemType = invSlot.getItemType();
-        if(itemType != null) {
+        if (itemType != null) {
             return itemType.getDescription();
         } else {
             return "";
@@ -307,6 +307,10 @@ public class Inventory implements Serializable {
     }
 
     public int addToInventory(int startSlot, String name, int qty, int level) {
+        return addToInventory(startSlot, name, qty, level, true);
+    }
+
+    public int addToInventory(int startSlot, String name, int qty, int level, boolean stack) {
         ItemType itemType = registry.getItemType(name);
         InventorySlot inventorySlot = null;
 
@@ -317,15 +321,17 @@ public class Inventory implements Serializable {
         int leftToDistribute = qty;
 
         //try and stack with an existing slot
-        if (startSlot == 0) {
-            for (int i = inventorySlots.size() - 1; i >= 0; i--) {
-                inventorySlot = inventorySlots.get(i);
-                if (inventorySlot.getItemTypeName().equals(name)) {
-                    leftToDistribute = inventorySlot.addItem(itemType, leftToDistribute, level);
-                }
+        if (stack) {
+            if (startSlot == 0) {
+                for (int i = inventorySlots.size() - 1; i >= 0; i--) {
+                    inventorySlot = inventorySlots.get(i);
+                    if (inventorySlot.getItemTypeName().equals(name)) {
+                        leftToDistribute = inventorySlot.addItem(itemType, leftToDistribute, level);
+                    }
 
-                if (leftToDistribute <= 0) {
-                    break;
+                    if (leftToDistribute <= 0) {
+                        break;
+                    }
                 }
             }
         }
