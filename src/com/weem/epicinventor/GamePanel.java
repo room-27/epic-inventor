@@ -1,13 +1,12 @@
 package com.weem.epicinventor;
 
+import com.weem.epicinventor.GameController.MultiplayerMode;
 import com.weem.epicinventor.utility.*;
 import javax.swing.*;
 import java.awt.event.*;
 import java.awt.*;
 import javax.swing.event.MouseInputAdapter;
 import java.awt.event.MouseWheelEvent;
-import java.awt.event.MouseWheelListener;
-import java.awt.image.*;
 
 public class GamePanel extends JPanel implements Runnable {
 
@@ -15,21 +14,21 @@ public class GamePanel extends JPanel implements Runnable {
     private int pHeight;
     private static final int NO_DELAYS_PER_YIELD = 16;
     private static final int MAX_FRAME_SKIPS = 5;
-    private Thread animator;
+    private transient Thread animator;
     private volatile boolean isRunning = false;
-    private volatile boolean isPaused = false;
-    private volatile boolean isMasterPaused = false;
+    private boolean isPaused = false;
+    private boolean isMasterPaused = false;
     private long period;
-    private Graphics dbg;
-    private Image dbImage = null;
+    private transient Graphics dbg;
+    private transient Image dbImage = null;
     private Container container;
     private Game game;
-    private GameController gameController;
+    private transient GameController gameController;
     public volatile boolean keySpacePressed = false;
     public volatile boolean keyRightPressed = false;
     public volatile boolean keyLeftPressed = false;
-    private volatile boolean keyUpPressed = false;
-    private volatile boolean keyDownPressed = false;
+    public volatile boolean keyUpPressed = false;
+    public volatile boolean keyDownPressed = false;
     public volatile boolean keyGatherPressed = false;
     public volatile boolean keyRobotPressed = false;
     private boolean[] keys = new boolean[65536];
@@ -90,13 +89,13 @@ public class GamePanel extends JPanel implements Runnable {
             }
         });
 
-        addMouseWheelListener(new MouseWheelListener() {
+        addMouseWheelListener(this::processMouseWheelMove);// {
 
-            @Override
-            public void mouseWheelMoved(MouseWheelEvent e) {
-                processMouseWheelMove(e);
-            }
-        });
+        //     @Override
+        //     public void mouseWheelMoved(MouseWheelEvent e) {
+        //         processMouseWheelMove(e);
+        //     }
+        // });
     }
 
     public void setContainer(Container c) {
@@ -134,7 +133,7 @@ public class GamePanel extends JPanel implements Runnable {
             } else {
                 gameController.multiPlayerHostKey(keyCode, e.getKeyChar());
             }
-        } else if (keyCode == Settings.buttonPause && gameController.getIsInGame() && gameController.multiplayerMode == gameController.multiplayerMode.NONE) {
+        } else if (keyCode == Settings.buttonPause && gameController.getIsInGame() && gameController.multiplayerMode == MultiplayerMode.NONE) {
             togglePaused();
         } else if (keyCode == KeyEvent.VK_ESCAPE && gameController.getIsInGame()) {
             gameController.togglePauseHUD();
@@ -144,9 +143,7 @@ public class GamePanel extends JPanel implements Runnable {
                     gameController.toggleMasterHUD();
                     return;
                 }
-            }
-            if (!isPaused && !isMasterPaused) {
-                if (gameController.getIsInGame()) {
+                if (!isPaused && !isMasterPaused) {
                     if (keyCode == Settings.buttonMoveLeft) {
                         if (!keyLeftPressed) {
                             keyLeftPressed = true;
@@ -223,8 +220,9 @@ public class GamePanel extends JPanel implements Runnable {
 
         keys[keyCode] = false;
 
-        if (gameController.isNewCharacterOpen()) {
-        } else if (keyCode == Settings.buttonMoveLeft) {
+        // if (gameController.isNewCharacterOpen()) {
+        // } else 
+        if (keyCode == Settings.buttonMoveLeft) {
             keyLeftPressed = false;
             if (!keyRightPressed) {
                 gameController.stopXMove();
@@ -381,7 +379,10 @@ public class GamePanel extends JPanel implements Runnable {
     @Override
     @SuppressWarnings({"SleepWhileInLoop", "CallToThreadYield"})
     public void run() {
-        long b, a, beforeTime, afterTime, timeDiff, sleepTime;
+        long beforeTime;
+        long afterTime;
+        long timeDiff;
+        long sleepTime;
         long overSleepTime = 0L;
         int noDelays = 0;
         long excess = 0L;
@@ -413,6 +414,7 @@ public class GamePanel extends JPanel implements Runnable {
                 try {
                     Thread.sleep(sleepTime / 1000000L);  // nano -> ms
                 } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
                 }
                 overSleepTime = (System.nanoTime() - afterTime) - sleepTime;
             } else {    // sleepTime <= 0; the frame took longer than the period
@@ -469,7 +471,7 @@ public class GamePanel extends JPanel implements Runnable {
             // Sync the display on some systems.
             // (on Linux, this fixes event queue problems)
             Toolkit.getDefaultToolkit().sync();
-            g.dispose();
+            if (g != null) g.dispose();
         } catch (Exception e) {
             EIError.debugMsg("Graphics context error: " + e);
         }

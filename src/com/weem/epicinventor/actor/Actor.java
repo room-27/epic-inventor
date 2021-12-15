@@ -1,6 +1,7 @@
 package com.weem.epicinventor.actor;
 
 import com.weem.epicinventor.*;
+import com.weem.epicinventor.GameController.MultiplayerMode;
 import com.weem.epicinventor.network.*;
 import com.weem.epicinventor.utility.*;
 import com.weem.epicinventor.weapon.*;
@@ -36,24 +37,29 @@ public abstract class Actor implements Serializable {
         TOUCH, MELEE, RANGE
     }
     protected String id = "";
-    transient protected Manager manager;
-    transient protected Registry registry;
-    transient protected Arc2D.Double attackArc;
-    transient protected int attackArcOffsetX, attackArcOffsetY;
-    transient protected boolean shouldRender = true;
-    protected int mapX, lastMapY, mapY;
-    transient protected int lastMapX;
-    transient protected int[] yx, ycm;
-    protected int width, height;
+    protected transient Manager manager;
+    protected transient Registry registry;
+    protected transient Arc2D.Double attackArc;
+    protected transient int attackArcOffsetX;
+    protected transient int attackArcOffsetY;
+    protected transient boolean shouldRender = true;
+    protected int mapX;
+    protected int lastMapY;
+    protected int mapY;
+    protected transient int lastMapX;
+    protected transient int[] yx;
+    protected transient int[] ycm;
+    protected int width;
+    protected int height;
     protected int xMoveSize;
     protected boolean stateChanged;
     protected String image = "";
-    transient protected String lastImage = "";
+    protected transient String lastImage = "";
     protected int numAnimationFrames;
     protected int currentAnimationFrame;
     protected int animationFrameDuration;
     protected long animationFrameUpdateTime = 0;
-    protected final static double DEFAULT_ANIMATION_DURATION = 0.20;
+    protected static final double DEFAULT_ANIMATION_DURATION = 0.20;
     protected boolean isAnimating;
     protected boolean isActive;
     protected ActionMode actionMode;
@@ -77,13 +83,16 @@ public abstract class Actor implements Serializable {
     protected int gravity;
     protected int totalFall = 0;
     protected int completeFall = 0;
-    protected int totalHitPoints, hitPoints;
-    protected int totalArmorPoints, armorPoints;
+    protected int totalHitPoints;
+    protected int hitPoints;
+    protected int totalArmorPoints;
+    protected int armorPoints;
     protected int baseHitPoints = 100;
     protected int baseArmorPoints = 0;
-    transient protected Rectangle spriteRect;
-    transient protected Rectangle attackRect;
-    protected int spriteRectOffestX, spriteRectOffestY;
+    protected transient Rectangle spriteRect;
+    protected transient Rectangle attackRect;
+    protected int spriteRectOffestX;
+    protected int spriteRectOffestY;
     protected boolean showRect;
     protected boolean showGoals;
     protected int knockBackX = 0;
@@ -109,12 +118,12 @@ public abstract class Actor implements Serializable {
     protected boolean statusStun;
     protected boolean statusRezSickness;
     protected boolean statusSlowed;
-    protected final static int STATUS_WIDTH = 17;
-    protected final static int STATUS_SPACING = 1;
+    protected static final int STATUS_WIDTH = 17;
+    protected static final int STATUS_SPACING = 1;
     protected boolean canFly;
     protected SoundClip loopingSound;
-    transient protected HashMap<Actor, Integer> attackers = new HashMap<Actor, Integer>();
-    transient protected Actor lastAttacker;
+    protected transient HashMap<Actor, Integer> attackers = new HashMap<>();
+    protected transient Actor lastAttacker;
     protected boolean disregardKnockBack = false;
     protected long stunEnded = 0;
     protected String debugInfo = "";
@@ -122,7 +131,7 @@ public abstract class Actor implements Serializable {
     protected boolean isChatting;
     protected boolean projectileOut = false;
 
-    public Actor(Manager m, Registry rg, String im, int x, int y) {
+    protected Actor(Manager m, Registry rg, String im, int x, int y) {
         manager = m;
 
         registry = rg;
@@ -381,19 +390,15 @@ public abstract class Actor implements Serializable {
     }
 
     public void jump(int initialVelocity) {
-        if (!statusStun) {
-            if (vertMoveMode == VertMoveMode.NOT_JUMPING || vertMoveMode == VertMoveMode.FLYING) {
-                setVertMoveMode(VertMoveMode.JUMPING);
-                jumpSize = initialVelocity;
-            }
+        if (!statusStun && (vertMoveMode == VertMoveMode.NOT_JUMPING || vertMoveMode == VertMoveMode.FLYING)) {
+            setVertMoveMode(VertMoveMode.JUMPING);
+            jumpSize = initialVelocity;
         }
     }
 
     public void flap() {
-        if (!statusStun) {
-            if (vertMoveMode != VertMoveMode.FLYING) {
-                setVertMoveMode(VertMoveMode.FLYING);
-            }
+        if (!statusStun && vertMoveMode != VertMoveMode.FLYING) {
+            setVertMoveMode(VertMoveMode.FLYING);
         }
     }
 
@@ -505,31 +510,30 @@ public abstract class Actor implements Serializable {
         lastImage = name;
     }
 
-    public int attackDamageAndKnockBack(Actor source, Arc2D.Double arc, Point mapPoint, int damage, int kbX, int kbY, String weaponType) {
+    public int attackDamageAndKnockBack(Actor source, Arc2D.Double arc, Point mapPoint, int damage, int kbX, int kbY,
+            String weaponType) {
         int damageTaken = 0;
-        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+        if (registry.getGameController().multiplayerMode != MultiplayerMode.CLIENT && arc.intersects(spriteRect) && hitPoints > 0) {
             //System.out.println(spriteRect.intersects(r) + ":" + hitPoints);
-            if (arc.intersects(spriteRect) && hitPoints > 0) {
-                int range = 3 * Math.abs(kbX) / 4;
-                if (range < 1) {
-                    range = 1;
-                }
+            int range = 3 * Math.abs(kbX) / 4;
+            if (range < 1) {
+                range = 1;
+            }
 
-                int randX = Rand.getRange(1, range);
-                int baseX = Math.abs(kbX) / 4;
+            int randX = Rand.getRange(1, range);
+            int baseX = Math.abs(kbX) / 4;
 
-                if (kbX < 0) {
-                    kbX = baseX + randX;
-                    kbX = -1 * kbX;
-                } else {
-                    kbX = baseX + randX;
-                }
+            if (kbX < 0) {
+                kbX = baseX + randX;
+                kbX = -1 * kbX;
+            } else {
+                kbX = baseX + randX;
+            }
 
-                damageTaken = applyDamage(damage, source);
+            damageTaken = applyDamage(damage, source);
 
-                if (!disregardKnockBack) {
-                    applyKnockBack(kbX, kbY);
-                }
+            if (!disregardKnockBack) {
+                applyKnockBack(kbX, kbY);
             }
             //System.out.println(spriteRect.x+","+spriteRect.y+" "+spriteRect.width+","+spriteRect.height+" "+r.x+","+r.y+" "+r.width+","+r.height);
         }
@@ -539,16 +543,15 @@ public abstract class Actor implements Serializable {
     public void applyKnockBack(int x, int y) {
         knockBackX = x;
         jump(y);
-        if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates()) {
-                UpdateMonster um = new UpdateMonster(this.getId());
-                um.mapX = this.getMapX();
-                um.mapY = this.getMapY();
-                um.action = "ApplyKnockBack";
-                um.dataInt = x;
-                um.dataInt2 = y;
-                registry.getNetworkThread().sendData(um);
-            }
+        if (registry.getGameController().multiplayerMode == MultiplayerMode.SERVER && registry.getNetworkThread() != null && registry
+            .getNetworkThread().readyForUpdates()) {
+            UpdateMonster um = new UpdateMonster(this.getId());
+            um.mapX = this.getMapX();
+            um.mapY = this.getMapY();
+            um.action = "ApplyKnockBack";
+            um.dataInt = x;
+            um.dataInt2 = y;
+            registry.getNetworkThread().sendData(um);
         }
     }
 
@@ -561,7 +564,7 @@ public abstract class Actor implements Serializable {
             return 0;
         }
 
-        damage -= Math.floor(getArmorPoints() / 5);
+        damage -= Math.floor(getArmorPoints() / 5f);
 
         registerAttacker(a, damage);
 
@@ -571,7 +574,7 @@ public abstract class Actor implements Serializable {
 
         hitPoints -= damage;
         registry.getIndicatorManager().createIndicator(mapX + (width / 2), mapY + 50, "-" + Integer.toString(damage));
-        SoundClip cl = new SoundClip(registry, "Weapon/Hit", getCenterPoint());
+        //SoundClip cl = new SoundClip(registry, "Weapon/Hit", getCenterPoint()); - UNUSED
 
         return damage;
     }
@@ -581,7 +584,7 @@ public abstract class Actor implements Serializable {
             lastAttacker = a;
 
             if (attackers == null) {
-                attackers = new HashMap<Actor, Integer>();
+                attackers = new HashMap<>();
             }
 
             if (attackers.containsKey(a)) {
@@ -604,19 +607,19 @@ public abstract class Actor implements Serializable {
         Arc2D.Double arc = null;
         if (spriteRect != null) {
             arc = new Arc2D.Double(
-                    (double) spriteRect.x - range + spriteRect.width / 2 + attackArcOffsetX,
-                    (double) spriteRect.y - range + spriteRect.height / 2 + attackArcOffsetY,
-                    2 * range,
-                    2 * range,
+                    (double) spriteRect.x - range + spriteRect.width / 2d + attackArcOffsetX,
+                    (double) spriteRect.y - range + spriteRect.height / 2d + attackArcOffsetY,
+                    2d * range,
+                    2d * range,
                     -90,
                     180,
                     Arc2D.PIE);
             if (facing == Facing.LEFT) {
                 arc = new Arc2D.Double(
-                        (double) spriteRect.x - range + spriteRect.width / 2 + attackArcOffsetX,
-                        (double) spriteRect.y - range + spriteRect.height / 2 + attackArcOffsetY,
-                        2 * range,
-                        2 * range,
+                        (double) spriteRect.x - range + spriteRect.width / 2d + attackArcOffsetX,
+                        (double) spriteRect.y - range + spriteRect.height / 2d + attackArcOffsetY,
+                        2d * range,
+                        2d * range,
                         90,
                         180,
                         Arc2D.PIE);
@@ -824,7 +827,7 @@ public abstract class Actor implements Serializable {
         boolean hit = true;
         if (y[0] < 0) {
             y[0] = getCollideYBackoffToBlock(y[0], blockHeight);
-            for (; y[0] < 0 && hit;) {
+            while (y[0] < 0 && hit) {
                 hit = manager.doesRectContainBlocks(mapX + baseOffset + x, mapY + y[0], baseWidth, height - topOffset);
                 if (hit) {
                     y[0] = getCollideYBackoffToBlock(y[0] + 1, blockHeight);
@@ -832,7 +835,7 @@ public abstract class Actor implements Serializable {
             }
         } else if (y[0] > 0) {
             y[0] = getCollideYBackoffToBlock(y[0], blockHeight) - 1;
-            for (; y[0] > 0 && hit;) {
+            while (y[0] > 0 && hit) {
                 hit = manager.doesRectContainBlocks(mapX + baseOffset + x, mapY + y[0], baseWidth, height - topOffset);
                 if (hit) {
                     y[0] = getCollideYBackoffToBlock(y[0] - 1, blockHeight) - 1;
@@ -846,7 +849,7 @@ public abstract class Actor implements Serializable {
         AffineTransform tx;
         AffineTransformOp op;
 
-        tx = AffineTransform.getScaleInstance(1, -1);
+        //tx = AffineTransform.getScaleInstance(1, -1); USELESS ASSIGNMENT
         tx = AffineTransform.getScaleInstance(-1, 1);
         tx.translate(-bi.getWidth(), 0);
         op = new AffineTransformOp(tx, AffineTransformOp.TYPE_BILINEAR);
@@ -948,9 +951,7 @@ public abstract class Actor implements Serializable {
             spriteRect = new Rectangle(mapX + baseOffset + offsetX, mapY - topOffset + spriteRectOffestY, baseWidth, height - topOffset);
         }
 
-        Point p = new Point(spriteRect.x + spriteRect.width / 2, spriteRect.y + spriteRect.height / 2);
-
-        return p;
+        return new Point(spriteRect.x + spriteRect.width / 2, spriteRect.y + spriteRect.height / 2);
     }
 
     public boolean isActive() {
@@ -1053,16 +1054,15 @@ public abstract class Actor implements Serializable {
 
     protected void checkIfFalling() {
         if (vertMoveMode != VertMoveMode.JUMPING && vertMoveMode != VertMoveMode.FLYING) {
-            Point p = null;
             boolean falling = true;
             if (manager.doesRectContainBlocks(mapX + baseOffset, mapY - 1, baseWidth, height - topOffset)) {
                 falling = false;
                 knockBackX = 0;
             }
-            if (falling == true) {
+            if (falling) {
                 totalFall = 0;
                 setVertMoveMode(VertMoveMode.FALLING, false);
-            } else if (falling != true && vertMoveMode != VertMoveMode.NOT_JUMPING) {
+            } else if (vertMoveMode != VertMoveMode.NOT_JUMPING) {
                 setVertMoveMode(VertMoveMode.NOT_JUMPING, true);
             }
         }
@@ -1199,9 +1199,8 @@ public abstract class Actor implements Serializable {
             this.setStatusStun(false, 0);
         }
         if (isActive && isFeared) {
-            long p = registry.getImageLoader().getPeriod();
             fearedTotalTime += (registry.getImageLoader().getPeriod())
-                    % (long) (1000 * fearedDuration);
+                    % (1000 * fearedDuration);
 
             // calculate current displayable image position
             if (fearedTotalTime >= (fearedDuration * 1000)) {
@@ -1209,9 +1208,8 @@ public abstract class Actor implements Serializable {
             }
         }
         if (isActive && isSlowed) {
-            long p = registry.getImageLoader().getPeriod();
             slowedTotalTime += (registry.getImageLoader().getPeriod())
-                    % (long) (1000 * slowedDuration);
+                    % (1000 * slowedDuration);
 
             // calculate current displayable image position
             if (slowedTotalTime >= (slowedDuration * 1000)) {
@@ -1219,9 +1217,8 @@ public abstract class Actor implements Serializable {
             }
         }
         if (isActive && isPoisoned) {
-            long p = registry.getImageLoader().getPeriod();
             poisonedTotalTime += (registry.getImageLoader().getPeriod())
-                    % (long) (1000 * poisonedDuration);
+                    % (1000 * poisonedDuration);
 
             // calculate current displayable image position
             if (poisonedTotalTime >= (poisonedDuration * 1000)) {
@@ -1265,7 +1262,7 @@ public abstract class Actor implements Serializable {
 
                 if (im != null) {
                     if (facing == Facing.LEFT) {
-                        tx = AffineTransform.getScaleInstance(1, -1);
+                        //tx = AffineTransform.getScaleInstance(1, -1); USELESS ASSIGNMENT
                         tx = AffineTransform.getScaleInstance(-1, 1);
                         tx.translate(-width, 0);
                         op = new AffineTransformOp(tx, AffineTransformOp.TYPE_BILINEAR);
@@ -1328,11 +1325,11 @@ public abstract class Actor implements Serializable {
         }
     }
 
-    private void readObject(ObjectInputStream aInputStream) throws Exception {
+    private void readObject(ObjectInputStream aInputStream) throws ClassNotFoundException, IOException {
         aInputStream.defaultReadObject();
     }
 
-    private void writeObject(ObjectOutputStream aOutputStream) throws Exception {
+    private void writeObject(ObjectOutputStream aOutputStream) throws IOException {
         aOutputStream.defaultWriteObject();
     }
 }

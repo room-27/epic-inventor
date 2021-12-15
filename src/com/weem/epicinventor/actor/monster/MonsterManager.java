@@ -867,7 +867,7 @@ public class MonsterManager extends Manager implements Serializable, Cloneable {
             if (spawnCoolDowns.containsKey(key)) {
                 spawnCoolDown = spawnCoolDowns.get(key);
             } else {
-                spawnCoolDown = new Integer(0);
+                spawnCoolDown = Integer.valueOf(0);
                 spawnCoolDowns.put(key, spawnCoolDown);
             }
             spawnCoolDown--;

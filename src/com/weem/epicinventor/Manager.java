@@ -10,17 +10,17 @@ import java.awt.*;
 
 public abstract class Manager {
 
-    transient protected GameController gameController;
-    transient protected Registry registry;
-    private final static float LONG_UPDATE_INTERVAL = 0.50f;
+    protected GameController gameController;
+    protected Registry registry;
+    private static final float LONG_UPDATE_INTERVAL = 0.50f;
     private long longUpdateCheckTime;
 
-    public Manager() {
+    protected Manager() {
         gameController = null;
         registry = null;
     }
 
-    public Manager(GameController gc, Registry rg) {
+    protected Manager(GameController gc, Registry rg) {
         gameController = gc;
         registry = rg;
     }
@@ -302,7 +302,7 @@ public abstract class Manager {
 
     public void update() {
         longUpdateCheckTime += registry.getImageLoader().getPeriod();
-        if (((float)longUpdateCheckTime / 1000.0f) >= LONG_UPDATE_INTERVAL) {
+        if ((longUpdateCheckTime / 1000.0f) >= LONG_UPDATE_INTERVAL) {
             longUpdateCheckTime = 0;
             updateLong();
         }

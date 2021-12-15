@@ -22,8 +22,6 @@ import com.weem.epicinventor.world.block.*;
 import java.awt.*;
 import java.awt.image.*;
 import java.util.*;
-import java.io.*;
-import javax.sound.sampled.*;
 import java.awt.geom.Arc2D;
 
 public class GameController {
@@ -31,25 +29,26 @@ public class GameController {
     public enum MoveMode {
 
         NONE, LEFT, RIGHT, UP, DOWN
-    };
+    }
 
     public enum MultiplayerMode {
 
         NONE, CLIENT, SERVER
-    };
-    private int pWidth, pHeight;
+    }
+    private int pWidth;
+    private int pHeight;
     private MoveMode xMoveMode;
     private MoveMode yMoveMode;
     private int xMoveSize; //size of map move in pixels
     private int yMoveSize; //size of map move in pixels 
-    public final static String CONFIG_DIR = "/com/weem/epicinventor/_config/";
-    public final static String IMAGES_DIR = "/Images/";
-    public final static String MUSIC_DIR = "/Music/";
+    public static final String CONFIG_DIR = "/com/weem/epicinventor/_config/";
+    public static final String IMAGES_DIR = "/Images/";
+    public static final String MUSIC_DIR = "/Music/";
     public static Properties props;
-    private final static double MOVE_FACTOR = 0.75; //smaller is slower
-    private final static int MAX_RESOURCE_DISTANCE = 24; //from center
-    private final static int MAX_PLACEABLE_DISTANCE = 24; //from center
-    private final static int MAX_CONTAINER_DISTANCE = 200; //from center
+    private static final double MOVE_FACTOR = 0.75; //smaller is slower
+    private static final int MAX_RESOURCE_DISTANCE = 24; //from center
+    private static final int MAX_PLACEABLE_DISTANCE = 24; //from center
+    private static final int MAX_CONTAINER_DISTANCE = 200; //from center
     private Registry registry;
     private BlockManager blockManager;
     private ItemManager itemManager;
@@ -69,29 +68,29 @@ public class GameController {
     private BufferedImage cursorImage;
     private String cursorText;
     private float messageTotalTime;
-    private float MESSAGE_MAX_TIME = 5.00f;
+    private float messageMaxTime = 5.00f;
     private boolean showMessage;
     private String message = "";
     private String messageType = "";
     private boolean networkMode;
     private String gameError;
-    private String newPlayerName = "";
-    private String newRobotName = "";
     private boolean isLoading;
     private boolean isOnline;
     //private volatile NetworkThread networkThread;
-    private volatile NetworkThread2 networkThread;
-    private volatile TCPServerManager TCPServerManager;
-    private volatile TCPClient tcpClient;
+    private NetworkThread2 networkThread;
+    private TCPServerManager tcpServerManager;
     private long period;
     private ImageLoaderThread imageLoadThread;
-    private GamePlayList currentPlayList, inventorPlayList, robotPlayList, bossPlayList, belowGroundPlayList;
+    private GamePlayList currentPlayList;
+    private GamePlayList inventorPlayList;
+    private GamePlayList robotPlayList;
+    private GamePlayList bossPlayList;
+    private GamePlayList belowGroundPlayList;
     public MultiplayerMode multiplayerMode = MultiplayerMode.NONE;
     public boolean startServer = false;
     public boolean serverJoin = false;
     public String serverPort = "7777";
     public String serverIP = "";
-    private int cameraShakeAmount = 0;
     private long cameraShakeFinished = 0;
     String currentVersion = "";
     Point townCameraPosition;
@@ -114,7 +113,7 @@ public class GameController {
         cursorText = "";
 
         props = System.getProperties();
-        Enumeration e = props.propertyNames();
+        Enumeration<?> e = props.propertyNames();
 
         while (e.hasMoreElements()) {
             String key = (String) e.nextElement();
@@ -157,7 +156,8 @@ public class GameController {
             while (!imageLoadThread.getImagesLoaded()) {
                 Thread.sleep(10L);
             }
-        } catch (Exception c) {
+        } catch (InterruptedException c) {
+            Thread.currentThread().interrupt();
         }
         imageLoadThread = new ImageLoaderThread(registry.getImageLoader(), "Images.dat");
         itemManager = new ItemManager(this, registry);
@@ -165,12 +165,12 @@ public class GameController {
         playerManager = new PlayerManager(this, registry);
         registry.setPlayerManager(playerManager);
 
-        String v = RemoteFile.getFileContents("http://download.epicinventor.com/v/" + Game.VERSION + "/");
-        if (v != null) {
-            if (!v.equals("")) {
-                currentVersion = v;
-                isOnline = true;
-            }
+        //String v = RemoteFile.getFileContents("http://download.epicinventor.com/v/" + Game.VERSION + "/");
+        //Bypass, since the website is gone
+        String v = Game.VERSION;
+        if (v != null && !v.equals("")) {
+            currentVersion = v;
+            isOnline = true;
         }
 
         //resetGame();
@@ -358,12 +358,12 @@ public class GameController {
         }
          */
         if (startServer) {
-            TCPServerManager = new TCPServerManager(registry, this, Integer.parseInt(serverPort));
-            networkThread = new NetworkThread2(TCPServerManager, null);
+            tcpServerManager = new TCPServerManager(registry, this, Integer.parseInt(serverPort));
+            networkThread = new NetworkThread2(tcpServerManager, null);
             registry.setNetworkThread(networkThread);
-            TCPServerManager.start();
+            tcpServerManager.start();
         } else if (serverJoin) {
-            tcpClient = new TCPClient(registry, this, serverIP, Integer.parseInt(serverPort));
+            TCPClient tcpClient = new TCPClient(registry, this, serverIP, Integer.parseInt(serverPort));
             networkThread = new NetworkThread2(null, tcpClient);
             registry.setNetworkThread(networkThread);
             tcpClient.start();
@@ -740,7 +740,7 @@ public class GameController {
 
     public void shakeCamera(long time, int amount) {
         cameraShakeFinished = registry.currentTime + time;
-        cameraShakeAmount = amount;
+        // int cameraShakeAmount = amount;
     }
 
     public boolean getKey(int k) {
@@ -895,8 +895,8 @@ public class GameController {
         if (networkThread != null) {
             networkThread.close();
         }
-        if (TCPServerManager != null) {
-            TCPServerManager.close();
+        if (tcpServerManager != null) {
+            tcpServerManager.close();
         }
         /*
          * networkThread = null; registry.setNetworkThread(null);
@@ -919,8 +919,8 @@ public class GameController {
         if (networkThread != null) {
             networkThread.close();
         }
-        if (TCPServerManager != null) {
-            TCPServerManager.close();
+        if (tcpServerManager != null) {
+            tcpServerManager.close();
         }
 
         gamePanel.resumeGame();
@@ -1444,9 +1444,9 @@ public class GameController {
                 long p = registry.getImageLoader().getPeriod();
                 messageTotalTime = (messageTotalTime
                         + registry.getImageLoader().getPeriod())
-                        % (long) (1000 * MESSAGE_MAX_TIME * 2);
+                        % (long) (1000 * messageMaxTime * 2);
 
-                if ((messageTotalTime / (MESSAGE_MAX_TIME * 1000)) > 1) {
+                if ((messageTotalTime / (messageMaxTime * 1000)) > 1) {
                     messageTotalTime = 0;
                     showMessage = false;
                 }

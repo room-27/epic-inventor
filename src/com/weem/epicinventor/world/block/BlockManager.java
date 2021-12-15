@@ -170,7 +170,7 @@ public class BlockManager implements Serializable, Cloneable {
                         Boolean.parseBoolean(parts[3]),
                         Boolean.parseBoolean(parts[4]));
 
-                blockTypeIdMap.put(new Integer(i), blockType);
+                blockTypeIdMap.put(Integer.valueOf(i), blockType);
 
                 if (blockTypes.containsKey(parts[1])) {
                     blockTypeList = null;
@@ -464,7 +464,7 @@ public class BlockManager implements Serializable, Cloneable {
     }
 
     public BlockType getBlockTypeById(short id) {
-        Integer i = new Integer(id);
+        Integer i = Integer.valueOf(id);
         BlockType bt = null;
         if (blockTypeIdMap.containsKey(i)) {
             bt = (BlockType) blockTypeIdMap.get(i);

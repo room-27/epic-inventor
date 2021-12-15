@@ -209,25 +209,25 @@ public class Settings {
             FileOutputStream settingsFile = new FileOutputStream("SettingsTemp.dat");
             ObjectOutputStream settings = new ObjectOutputStream(settingsFile);
 
-            settings.writeObject(new Integer(1)); //settings file version
-            settings.writeObject(new Integer(resolution));
+            settings.writeObject(Integer.valueOf(1)); //settings file version
+            settings.writeObject(Integer.valueOf(resolution));
             if (volumeMusic == 0) {
-                settings.writeObject(new Integer(-1));
+                settings.writeObject(Integer.valueOf(-1));
             } else {
-                settings.writeObject(new Integer(volumeMusic));
+                settings.writeObject(Integer.valueOf(volumeMusic));
             }
             if (volumeFX == 0) {
-                settings.writeObject(new Integer(-1));
+                settings.writeObject(Integer.valueOf(-1));
             } else {
-                settings.writeObject(new Integer(volumeFX));
+                settings.writeObject(Integer.valueOf(volumeFX));
             }
-            settings.writeObject(new Integer(buttonMoveRight));
-            settings.writeObject(new Integer(buttonMoveLeft));
-            settings.writeObject(new Integer(buttonJump));
-            settings.writeObject(new Integer(buttonAction));
-            settings.writeObject(new Integer(buttonRobot));
-            settings.writeObject(new Integer(buttonInventory));
-            settings.writeObject(new Integer(buttonPause));
+            settings.writeObject(Integer.valueOf(buttonMoveRight));
+            settings.writeObject(Integer.valueOf(buttonMoveLeft));
+            settings.writeObject(Integer.valueOf(buttonJump));
+            settings.writeObject(Integer.valueOf(buttonAction));
+            settings.writeObject(Integer.valueOf(buttonRobot));
+            settings.writeObject(Integer.valueOf(buttonInventory));
+            settings.writeObject(Integer.valueOf(buttonPause));
 
             settings.close();
 
@@ -240,12 +240,12 @@ public class Settings {
 
         //try to save the players
         for (int i = 1; i <= NUMBER_OF_PLAYER_SLOTS; i++) {
-            try {
-                if (player == i - 1) {
+            if (player == i - 1) {
+                try (
                     FileOutputStream playerFile = new FileOutputStream("PlayerTemp.dat");
                     ObjectOutputStream playerInfo = new ObjectOutputStream(playerFile);
-
-                    playerInfo.writeObject(new Integer(2)); //settings file version
+                ){
+                    playerInfo.writeObject(Integer.valueOf(2)); //settings file version
                     playerInfo.writeObject(players.get(i - 1));
                     if (registry.getGameController().multiplayerMode != GameController.MultiplayerMode.CLIENT && player == i - 1) {
                         blockManagers.set(i - 1, registry.getBlockManager());
@@ -256,14 +256,12 @@ public class Settings {
                     playerInfo.writeObject(placeableManagers.get(i - 1));
                     playerInfo.writeObject(monsterManagers.get(i - 1));
 
-                    playerInfo.close();
-
                     moveFile("PlayerTemp.dat", "Player" + i + ".dat");
                     EIError.debugMsg("Saved Player " + i, EIError.ErrorLevel.Notice);
+                } catch (Exception e) {
+                    status = false;
+                    EIError.debugMsg("Couldn't save Player " + i + " " + e.getMessage(), EIError.ErrorLevel.Error);
                 }
-            } catch (Exception e) {
-                status = false;
-                EIError.debugMsg("Couldn't save Player " + i + " " + e.getMessage(), EIError.ErrorLevel.Error);
             }
         }
 
