@@ -9,3 +9,6 @@
 .vs
 .vscode
 *.log
+
+# Target #
+target
