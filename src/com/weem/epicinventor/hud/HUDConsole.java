@@ -3,21 +3,20 @@ package com.weem.epicinventor.hud;
 import com.weem.epicinventor.*;
 
 import java.awt.*;
-import java.util.*;
 
 public class HUDConsole extends HUD {
 
-    private final static int MAIN_X = 10;
-    private final static int MAIN_Y = 0;
-    private final static int MAIN_WIDTH = 700;
-    private final static int MAIN_HEIGHT = 50;
-    private final static int MAX_HEIGHT = 25;
-    private final static int ANIMATE_SPEED = 2;
+    private static final int MAIN_X = 10;
+    private static final int MAIN_Y = 0;
+    private static final int MAIN_WIDTH = 700;
+    private static final int MAIN_HEIGHT = 50;
+    private static final int MAX_HEIGHT = 25;
+    private static final int ANIMATE_SPEED = 2;
     private boolean opening;
     private boolean closing;
     private boolean cursorShow;
     private float cursorTotalTime;
-    private float CURSOR_MAX_TIME = 0.25f;
+    private float cursorMaxTime = 0.25f;
     private HUDArea mainArea;
     private String consoleText = "";
 
@@ -95,9 +94,9 @@ public class HUDConsole extends HUD {
             long p = registry.getImageLoader().getPeriod();
             cursorTotalTime = (cursorTotalTime
                     + registry.getImageLoader().getPeriod())
-                    % (long) (1000 * CURSOR_MAX_TIME * 2);
+                    % (long) (1000 * cursorMaxTime * 2);
 
-            if ((cursorTotalTime / (CURSOR_MAX_TIME * 1000)) > 1) {
+            if ((cursorTotalTime / (cursorMaxTime * 1000)) > 1) {
                 cursorTotalTime = 0;
                 cursorShow = !cursorShow;
             }

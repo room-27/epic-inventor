@@ -12,3 +12,8 @@
 
 # Target #
 target
+
+# Generated Save Data
+Player1.dat
+PlayerTemp.dat
+Settings.dat

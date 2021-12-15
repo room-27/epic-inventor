@@ -217,13 +217,12 @@ public class World implements Serializable {
         }
 
         // Carve some caves into the ground.
-//        cavern = new WorldCavern(this, wt, CAVERN_FACTOR, CAVE_RADIUS, CAVE_TERM, worldGround);
-//        newBlockArray = cavern.carveCavern(newBlockArray, size, (HORIZ_BLOCKS * size - size * 3 / 4), (HORIZ_BLOCKS * size - size / 4), (size / 16), (GROUND_LEVEL / 4), size / 32, 0.1f);
-
+        // cavern = new WorldCavern(this, wt, CAVERN_FACTOR, CAVE_RADIUS, CAVE_TERM, worldGround);
+        // newBlockArray = cavern.carveCavern(newBlockArray, size, (HORIZ_BLOCKS * size - size * 3 / 4), (HORIZ_BLOCKS * size - size / 4), (size / 16), (GROUND_LEVEL / 4), size / 32, 0.1f);
+        
         imagePainting = new WorldImagePainting(this, wt, blockManager, worldGround);
         newBlockArray = imagePainting.paintImages(newBlockArray, 20, SIZE*HORIZ_BLOCKS-20, 20, GROUND_LEVEL);
 
-        noise = null;
         System.gc();
 
         EIError.debugMsg("GenerateWorld End", EIError.ErrorLevel.Notice);

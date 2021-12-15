@@ -747,7 +747,7 @@ public abstract class Monster extends Actor implements Serializable {
             nextSoundPlay = registry.currentTime + Rand.getRange(10000, 15000);
             if (name.equals("ZombieWalrus") && cl.getWasHeard()) {
                 loopImage("Monsters/" + name + "/Attacking", 0.50);
-                monsterManager.shakeCamera(500, 10);
+                monsterManager.shakeCamera(500, 15);
             }
         }
     }

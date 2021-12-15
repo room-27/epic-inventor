@@ -1,6 +1,7 @@
 package com.weem.epicinventor.actor;
 
 import com.weem.epicinventor.*;
+import com.weem.epicinventor.GameController.MultiplayerMode;
 import com.weem.epicinventor.ai.*;
 import com.weem.epicinventor.inventory.*;
 import com.weem.epicinventor.actor.monster.*;
@@ -391,7 +392,7 @@ public class PlayerManager extends Manager {
 
     public int playerAddItem(int slot, String name, int qty) {
         int ret = currentPlayer.playerAddItem(slot, name, qty);
-        if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
+        if (gameController.multiplayerMode != MultiplayerMode.NONE && registry.getNetworkThread() != null) {
             if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();
@@ -407,7 +408,7 @@ public class PlayerManager extends Manager {
 
     public int playerAddItem(Player p, int slot, String name, int qty) {
         int ret = p.playerAddItem(slot, name, qty);
-        if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
+        if (gameController.multiplayerMode != MultiplayerMode.NONE && registry.getNetworkThread() != null) {
             if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(p.getId());
                 up.name = p.getName();
@@ -422,7 +423,7 @@ public class PlayerManager extends Manager {
 
     public int playerAddItem(int slot, String name, int qty, int level) {
         int ret = currentPlayer.playerAddItem(slot, name, qty, level);
-        if (gameController.multiplayerMode != gameController.multiplayerMode.NONE && registry.getNetworkThread() != null) {
+        if (gameController.multiplayerMode != MultiplayerMode.NONE && registry.getNetworkThread() != null) {
             if (registry.getNetworkThread().readyForUpdates()) {
                 UpdatePlayer up = new UpdatePlayer(currentPlayer.getId());
                 up.name = currentPlayer.getName();

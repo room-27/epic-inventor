@@ -170,6 +170,8 @@ public class HUDManager extends Manager {
                 miniMapHUD.setName("WeaponInfo");
                 huds.add(miniMapHUD);
                 break;
+            default:
+                break;
         }
     }
 
@@ -195,7 +197,6 @@ public class HUDManager extends Manager {
             hud = huds.get(i);
             if (hud.getName().equals(n)) {
                 hud.shouldRender = false;
-                hud = null;
                 huds.remove(i);
             }
         }

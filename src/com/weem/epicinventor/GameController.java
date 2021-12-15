@@ -44,7 +44,7 @@ public class GameController {
     public static final String CONFIG_DIR = "/com/weem/epicinventor/_config/";
     public static final String IMAGES_DIR = "/Images/";
     public static final String MUSIC_DIR = "/Music/";
-    public static Properties props;
+    public static Properties props = System.getProperties();
     private static final double MOVE_FACTOR = 0.75; //smaller is slower
     private static final int MAX_RESOURCE_DISTANCE = 24; //from center
     private static final int MAX_PLACEABLE_DISTANCE = 24; //from center
@@ -92,6 +92,7 @@ public class GameController {
     public String serverPort = "7777";
     public String serverIP = "";
     private long cameraShakeFinished = 0;
+    private int cameraShakeAmount = 0;
     String currentVersion = "";
     Point townCameraPosition;
     private long nextAutoSave = 0;
@@ -112,7 +113,7 @@ public class GameController {
         cursorImage = null;
         cursorText = "";
 
-        props = System.getProperties();
+        /////////// props = System.getProperties();
         Enumeration<?> e = props.propertyNames();
 
         while (e.hasMoreElements()) {
@@ -328,7 +329,8 @@ public class GameController {
                 Thread.sleep(100L);
             }
             imageLoadThread = null;
-        } catch (Exception c) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
         placeableManager.setTransient(registry);
         monsterManager.setTransient(registry);
@@ -529,11 +531,11 @@ public class GameController {
     }
 
     public int getBlockWidth() {
-        return blockManager.getBlockWidth();
+        return BlockManager.getBlockWidth();
     }
 
     public int getBlockHeight() {
-        return blockManager.getBlockHeight();
+        return BlockManager.getBlockHeight();
     }
 
     public MoveMode getXMoveMode() {
@@ -582,7 +584,7 @@ public class GameController {
             if (!blockManager.isIdInGroup(b, "None")) {
                 BlockType bt = blockManager.getBlockTypeById(b);
                 if (bt != null && !bt.isBackground()) {
-                    return (p.y / blockManager.getBlockHeight()) * blockManager.getBlockHeight() + blockManager.getBlockHeight();
+                    return (p.y / BlockManager.getBlockHeight()) * BlockManager.getBlockHeight() + BlockManager.getBlockHeight();
                 } else {
                     return 0;
                 }
@@ -678,12 +680,12 @@ public class GameController {
 
     public void dropLoot(Monster m, int x, int y, ArrayList<Drop> drops) {
         Drop drop = null;
-        ArrayList<Drop> overflowDrops = new ArrayList<Drop>();
+        ArrayList<Drop> overflowDrops = new ArrayList<>();
 
         Player p = null;
         Actor a = m.getLastAttacker();
-        if (a instanceof com.weem.epicinventor.actor.Robot) {
-            p = ((com.weem.epicinventor.actor.Robot) a).getPlayer();
+        if (a instanceof com.weem.epicinventor.actor.Robot r) {
+            p = r.getPlayer();
         } else {
             if (a != null) {
                 p = playerManager.getPlayerById(a.getId());
@@ -726,21 +728,22 @@ public class GameController {
             }
         }
 
-        if (overflowDrops.size() > 0) {
+        if (!overflowDrops.isEmpty()) {
             placeableManager.loadContainer(x, overflowDrops);
         }
 
         if (p == playerManager.getCurrentPlayer()) {
             indicatorManager.createIndicator(x, y, drops);
-        } else {
-            if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
-            }
         }
+        // else {
+        //     if (registry.getGameController().multiplayerMode != MultiplayerMode.CLIENT) {
+        //     }
+        // }
     }
 
     public void shakeCamera(long time, int amount) {
         cameraShakeFinished = registry.currentTime + time;
-        // int cameraShakeAmount = amount;
+        cameraShakeAmount = amount;
     }
 
     public boolean getKey(int k) {
@@ -760,12 +763,12 @@ public class GameController {
             newY = townCameraPosition.y;
         } else {
             if (cameraShakeFinished > 0) {
-                int shakeOffsetX = Rand.getRange(1, 4);
+                int shakeOffsetX = Rand.getRange(1, cameraShakeAmount);
                 if (Rand.getRange(0, 1) == 0) {
                     shakeOffsetX *= -1;
                 }
 
-                int shakeOffsetY = Rand.getRange(1, 4);
+                int shakeOffsetY = Rand.getRange(1, cameraShakeAmount);
                 if (Rand.getRange(0, 1) == 0) {
                     shakeOffsetY *= -1;
                 }
@@ -805,10 +808,8 @@ public class GameController {
         }
 
         //make sure we can't go too far to the right
-        if (blockManager != null) {
-            if (x > (blockManager.getMapWidth() - objWidth)) {
-                x = blockManager.getMapWidth() - objWidth;
-            }
+        if (blockManager != null && x > (blockManager.getMapWidth() - objWidth)) {
+            x = blockManager.getMapWidth() - objWidth;
         }
 
         return x;
@@ -869,20 +870,19 @@ public class GameController {
     }
 
     public void startGather(Player p) {
-        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
-            if (!playerManager.isPlayerMoving(p) && !playerManager.isPlayerPerformingAction(p)) {
-                if (!playerManager.isPlayerInsideRobot(p)) {
-                    String rid = resourceManager.startGather(p, p.getCenterPoint(), MAX_RESOURCE_DISTANCE);
-                    if (!rid.isEmpty()) {
-                        playerManager.playerStartGather(p, rid);
-                    } else if (placeableManager.startDestroy(p)) {
-                        playerManager.playerStartGather(p, null);
-                    } else if (playerManager.playerToggleInsideRobot(p)) {
-                        //we're good!
-                    }
+        if (registry.getGameController().multiplayerMode != MultiplayerMode.CLIENT
+        && !playerManager.isPlayerMoving(p) && !playerManager.isPlayerPerformingAction(p)) {
+            if (!playerManager.isPlayerInsideRobot(p)) {
+                String rid = resourceManager.startGather(p, p.getCenterPoint(), MAX_RESOURCE_DISTANCE);
+                if (!rid.isEmpty()) {
+                    playerManager.playerStartGather(p, rid);
+                } else if (placeableManager.startDestroy(p)) {
+                    playerManager.playerStartGather(p, null);
                 } else if (playerManager.playerToggleInsideRobot(p)) {
                     //we're good!
                 }
+            } else if (playerManager.playerToggleInsideRobot(p)) {
+                //we're good!
             }
         }
     }
@@ -1179,7 +1179,7 @@ public class GameController {
     }
 
     public void stopActions(Player p) {
-        if (multiplayerMode != this.multiplayerMode.CLIENT) {
+        if (multiplayerMode != MultiplayerMode.CLIENT) {
             if (resourceManager != null) {
                 resourceManager.stopGather(p);
             }
@@ -1220,31 +1220,23 @@ public class GameController {
     public void handleClick(Player p, Point clickPoint) {
         boolean handled = false;
 
-        if (!hudManager.handleClick(clickPoint)) {
-            if (!gamePanel.getIsPaused() && !gamePanel.getIsMasterPaused()) {
-                if (monsterManager != null) {
-                    handled = monsterManager.handleClick(p, clickPoint);
-                    if (placeableManager != null && !handled) {
-                        if (!placeableManager.handleClick(p, clickPoint)) {
-                            playerManager.handleClick(clickPoint);
-                        }
-                    } else {
-                        playerManager.handleClick(clickPoint);
-                    }
+        if (!hudManager.handleClick(clickPoint) && !gamePanel.getIsPaused()
+        && !gamePanel.getIsMasterPaused() && monsterManager != null) {
+            handled = monsterManager.handleClick(p, clickPoint);
+            if (placeableManager != null && !handled) {
+                if (!placeableManager.handleClick(p, clickPoint)) {
+                    playerManager.handleClick(clickPoint);
                 }
+            } else {
+                playerManager.handleClick(clickPoint);
             }
         }
     }
 
     public void handleRightClick(Point clickPoint) {
-        if (!hudManager.handleRightClick(clickPoint)) {
-            if (placeableManager != null) {
-                if (!placeableManager.handleRightClick(clickPoint)) {
-                    if (playerManager != null) {
-                        playerManager.handleRightClick();
-                    }
-                }
-            }
+        if (!hudManager.handleRightClick(clickPoint) && placeableManager != null
+        && !placeableManager.handleRightClick(clickPoint) && playerManager != null) {
+            playerManager.handleRightClick();
         }
     }
 
@@ -1258,14 +1250,13 @@ public class GameController {
 
     public void handleMouseScroll(int steps) {
         playerManager.getCurrentPlayer().scrollQuickBar(steps);
-        if (multiplayerMode != MultiplayerMode.NONE && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates()) {
-                UpdatePlayer up = new UpdatePlayer(playerManager.getCurrentPlayer().getId());
-                up.name = playerManager.getCurrentPlayer().getName();
-                up.action = "ScrollQuickBar";
-                up.dataInt = steps;
-                registry.getNetworkThread().sendData(up);
-            }
+        if (multiplayerMode != MultiplayerMode.NONE && registry.getNetworkThread() != null
+        && registry.getNetworkThread().readyForUpdates()) {
+            UpdatePlayer up = new UpdatePlayer(playerManager.getCurrentPlayer().getId());
+            up.name = playerManager.getCurrentPlayer().getName();
+            up.action = "ScrollQuickBar";
+            up.dataInt = steps;
+            registry.getNetworkThread().sendData(up);
         }
     }
 
@@ -1292,7 +1283,7 @@ public class GameController {
     public void renderCursorImage(Graphics g) {
         if (cursorImage != null) {
             int textX = 30 + (1 - cursorText.length()) * 8;
-            BufferedImage bimg = new BufferedImage(40, 40, BufferedImage.TRANSLUCENT);
+            BufferedImage bimg = new BufferedImage(40, 40, Transparency.TRANSLUCENT);
             bimg.createGraphics().drawImage(cursorImage, 0, 0, null);
             Graphics gCursor = bimg.getGraphics();
             Font textFont = new Font("SansSerif", Font.BOLD, 12);
@@ -1441,7 +1432,7 @@ public class GameController {
 
             //show a message
             if (showMessage) {
-                long p = registry.getImageLoader().getPeriod();
+                //long p = registry.getImageLoader().getPeriod();
                 messageTotalTime = (messageTotalTime
                         + registry.getImageLoader().getPeriod())
                         % (long) (1000 * messageMaxTime * 2);
@@ -1476,12 +1467,8 @@ public class GameController {
                 g.drawString(parts[i], messageX, messageY - 100);
             }
         } else {
-            if (backgroundManager != null && !isLoading) {
-                if (blockManager != null) {
-                    if (panelRect.y > (blockManager.getMapSurfaceMin() - pHeight)) {
-                        backgroundManager.render(g);
-                    }
-                }
+            if (backgroundManager != null && !isLoading && blockManager != null && panelRect.y > (blockManager.getMapSurfaceMin() - pHeight)) {
+                backgroundManager.render(g);
             }
             if (blockManager != null && !isLoading) {
                 blockManager.render(g);
@@ -1515,12 +1502,10 @@ public class GameController {
             }
 
             //low life indicator
-            if (playerManager != null && !isLoading) {
-                if (playerManager.getCurrentPlayer().getHitPointPercentage() < 15) {
-                    BufferedImage im = registry.getImageLoader().getImage("Misc/Danger");
-                    if (im != null) {
-                        g.drawImage(im, 0, 0, null);
-                    }
+            if (playerManager != null && !isLoading && playerManager.getCurrentPlayer().getHitPointPercentage() < 15) {
+                BufferedImage im = registry.getImageLoader().getImage("Misc/Danger");
+                if (im != null) {
+                    g.drawImage(im, 0, 0, null);
                 }
             }
 
@@ -1613,7 +1598,7 @@ public class GameController {
                 setNetworkMode(false);
             }
 
-            if (parts[0].toLowerCase().equals("spawn")) {
+            if (parts[0].equalsIgnoreCase("spawn")) {
                 /*
                  * Spawns monsters - Syntax: spawn <monster type> spawn <monster
                  * type> <qty>
@@ -1641,7 +1626,7 @@ public class GameController {
 
 
             return;
-        } else if (parts[0].toLowerCase().equals("spawn")) {
+        } else if (parts[0].equalsIgnoreCase("spawn")) {
             /*
              * Spawns monsters - Syntax: spawn <monster type> spawn <monster
              * type> <qty>
@@ -1661,7 +1646,7 @@ public class GameController {
                 monsterManager.spawn(parts[1], "Roaming", x, y);
             }
             return;
-        } else if (parts[0].toLowerCase().equals("invadd")) {
+        } else if (parts[0].equalsIgnoreCase("invadd")) {
             /*
              * Adds item to player inventory - Syntax: invadd <item type> invadd
              * <item type> <qty>
@@ -1682,7 +1667,7 @@ public class GameController {
                 }
             }
             return;
-        } else if (parts[0].toLowerCase().equals("equip")) {
+        } else if (parts[0].equalsIgnoreCase("equip")) {
             /*
              * Adds item to player inventory - Syntax: invadd <item type> invadd
              * <item type> <qty>
@@ -1696,14 +1681,14 @@ public class GameController {
             playerDeleteInventory(40, 0);
             playerAddItem(40, parts[1], 1);
             return;
-        } else if (parts[0].toLowerCase().equals("addxp")) {
+        } else if (parts[0].equalsIgnoreCase("addxp")) {
             if (parts.length != 2) {
                 showMessage("Error", "Wrong number of arguments for (" + parts[0] + ")");
             }
 
             playerManager.getCurrentPlayer().addXP(Integer.parseInt(parts[1]));
             return;
-        } else if (parts[0].toLowerCase().equals("outlines")) {
+        } else if (parts[0].equalsIgnoreCase("outlines")) {
             /*
              * Toggles actor outlines - Syntax: outlines
              */
@@ -1715,21 +1700,21 @@ public class GameController {
                 monsterManager.showRects(true);
             }
             return;
-        } else if (parts[0].toLowerCase().equals("healer")) {
+        } else if (parts[0].equalsIgnoreCase("healer")) {
             playerManager.getCurrentPlayer().spawnOobaboo("Healer");
             return;
-        } else if (parts[0].toLowerCase().equals("gatherer")) {
+        } else if (parts[0].equalsIgnoreCase("gatherer")) {
             playerManager.getCurrentPlayer().spawnOobaboo("Gatherer");
             return;
-        } else if (parts[0].toLowerCase().equals("warrior")) {
+        } else if (parts[0].equalsIgnoreCase("warrior")) {
             playerManager.getCurrentPlayer().spawnOobaboo("Warrior");
             return;
-        } else if (parts[0].toLowerCase().equals("settcp")) {
+        } else if (parts[0].equalsIgnoreCase("settcp")) {
             townCameraPosition.x = playerManager.getCurrentPlayer().getMapX();
             townCameraPosition.y = playerManager.getCurrentPlayer().getMapY();
             showMessage("Error", "set");
             return;
-        } else if (parts[0].toLowerCase().equals("goals")) {
+        } else if (parts[0].equalsIgnoreCase("goals")) {
             if (monsterManager.getShowGoals()) {
                 monsterManager.showGoals(false);
             } else {
@@ -1737,16 +1722,16 @@ public class GameController {
             }
             showMessage("Error", "done");
             return;
-        } else if (parts[0].toLowerCase().equals("stun")) {
+        } else if (parts[0].equalsIgnoreCase("stun")) {
             this.stunPlayersOnGround(5000);
             return;
-        } else if (parts[0].toLowerCase().equals("kb") && parts.length == 2) {
+        } else if (parts[0].equalsIgnoreCase("kb") && parts.length == 2) {
             String[] xy = parts[1].split("x");
             if (xy.length == 2) {
                 playerManager.getCurrentPlayer().applyKnockBack(Integer.parseInt(xy[0]), Integer.parseInt(xy[1]));
             }
             return;
-        } else if (parts[0].toLowerCase().equals("mvol") && parts.length == 2) {
+        } else if (parts[0].equalsIgnoreCase("mvol") && parts.length == 2) {
             inventorPlayList.setVolume(Integer.parseInt(parts[1]));
             robotPlayList.setVolume(Integer.parseInt(parts[1]));
             bossPlayList.setVolume(Integer.parseInt(parts[1]));
