@@ -7,8 +7,7 @@ import com.weem.epicinventor.actor.monster.*;
 
 public class GoalAttackPlaceable extends Goal {
 
-    private final static int MAX_DISTANCE = 10000;
-    private Placeable currentTarget;
+    private static final int MAX_DISTANCE = 10000;
     private Placeable newTarget;
 
     public GoalAttackPlaceable(AI a, Registry r, String t, float b) {
@@ -62,7 +61,7 @@ public class GoalAttackPlaceable extends Goal {
 
         Monster actor = (Monster) ai.getActor();
 
-        currentTarget = newTarget;
+        Placeable currentTarget = newTarget;
 
         if (actor == null || currentTarget == null) {
             terminate();

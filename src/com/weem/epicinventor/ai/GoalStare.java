@@ -2,11 +2,10 @@ package com.weem.epicinventor.ai;
 
 import com.weem.epicinventor.*;
 import com.weem.epicinventor.actor.*;
-import com.weem.epicinventor.utility.EIError;
 
 public class GoalStare extends Goal {
 
-    private final static int CLOSE_DISTANCE = 25;
+    private static final int CLOSE_DISTANCE = 25;
 
     public GoalStare(AI a, Registry r, String t, float b) {
         super(a, r, t, b);

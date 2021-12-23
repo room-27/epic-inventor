@@ -167,11 +167,11 @@ public class InventorySlot implements Serializable {
         return qty;
     }
 
-    private void readObject(ObjectInputStream aInputStream) throws Exception {
+    private void readObject(ObjectInputStream aInputStream) throws IOException, ClassNotFoundException {
         aInputStream.defaultReadObject();
     }
 
-    private void writeObject(ObjectOutputStream aOutputStream) throws Exception {
+    private void writeObject(ObjectOutputStream aOutputStream) throws IOException {
         aOutputStream.defaultWriteObject();
     }
 }

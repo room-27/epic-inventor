@@ -6,7 +6,7 @@ import com.weem.epicinventor.actor.monster.*;
 
 public class GoalAttackPlayerRangedAggressive extends Goal {
 
-    private static int MAX_DISTANCE;
+    private int MAX_DISTANCE;
 
     public GoalAttackPlayerRangedAggressive(AI a, Registry r, String t, float b) {
         super(a, r, t, b);

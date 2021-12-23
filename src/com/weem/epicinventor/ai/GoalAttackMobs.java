@@ -3,14 +3,12 @@ package com.weem.epicinventor.ai;
 import com.weem.epicinventor.*;
 import com.weem.epicinventor.actor.*;
 import com.weem.epicinventor.actor.monster.*;
-import com.weem.epicinventor.utility.*;
 import java.awt.geom.Arc2D;
 
 import java.awt.*;
 
 public class GoalAttackMobs extends Goal {
 
-    private String currentTarget;
     private String newTarget;
 
     public GoalAttackMobs(AI a, Registry r, String t, float b) {
@@ -68,7 +66,7 @@ public class GoalAttackMobs extends Goal {
 
         Actor actor = ai.getActor();
 
-        currentTarget = newTarget;
+        String currentTarget = newTarget;
         Monster monster = registry.getMonsterManager().getMonsterById(currentTarget);
 
         if (actor == null || monster == null) {
@@ -81,10 +79,8 @@ public class GoalAttackMobs extends Goal {
             Arc2D.Double attackArc = actor.getAttackArc(actor.getAttackRange());
             if (attackArc != null) {
                 Rectangle sr = monster.getSpriteRect();
-                if (sr != null) {
-                    if (attackArc.intersects(sr)) {
-                        shouldAttack = true;
-                    }
+                if (sr != null && attackArc.intersects(sr)) {
+                    shouldAttack = true;
                 }
             }
         } else if (actor.isWithinAttackRange(monster.getCenterPoint())) {

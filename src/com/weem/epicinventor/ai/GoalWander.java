@@ -3,7 +3,6 @@ package com.weem.epicinventor.ai;
 import com.weem.epicinventor.*;
 import com.weem.epicinventor.actor.*;
 
-import com.weem.epicinventor.utility.EIError;
 import com.weem.epicinventor.utility.Rand;
 import java.awt.*;
 
@@ -16,7 +15,7 @@ public class GoalWander extends Goal {
     public GoalWander(AI a, Registry r, String t, float b) {
         super(a, r, t, b);
 
-        Actor actor = ai.getActor();
+        //Actor actor = ai.getActor();
     }
 
     @Override
@@ -77,9 +76,7 @@ public class GoalWander extends Goal {
                     }
                     nextMove = registry.currentTime + Rand.getRange(2000, 5000);
                 } else {
-                    if (actor != null && targetPoint != null) {
-                        actor.moveTowardsPoint(targetPoint);
-                    }
+                    actor.moveTowardsPoint(targetPoint);
                 }
             }
         }

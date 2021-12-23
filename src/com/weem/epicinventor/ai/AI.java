@@ -2,7 +2,6 @@ package com.weem.epicinventor.ai;
 
 import com.weem.epicinventor.*;
 import com.weem.epicinventor.actor.*;
-import com.weem.epicinventor.network.*;
 import com.weem.epicinventor.utility.*;
 
 import java.io.*;
@@ -11,8 +10,8 @@ import java.util.ArrayList;
 public class AI implements Serializable {
 
     protected static final long serialVersionUID = 10000L;
-    transient private Registry registry;
-    transient private Actor actor;
+    private transient Registry registry;
+    private transient Actor actor;
     private ArrayList<Goal> goals;
     private boolean active = false;
     private Goal currentGoal;
@@ -22,13 +21,13 @@ public class AI implements Serializable {
 
     public enum GoalType {
         WANDER, FLEE, FOLLOW, STARE, BOSS_ORC, SNAIL_RIDER, RESOURCE_MONSTER, ATTACK_MOBS, ATTACK_PLAYER, ATTACK_PLAYER_LUNGE, ATTACK_PLAYER_RANGED, ATTACK_PLAYER_RANGED_AGGRESSIVE, ATTACK_PLACEABLE, ATTACK_TOWN, OOBABOO_GATHERER, OOBABOO_HEALER, OOBABOO_WARRIOR
-    };
+    }
 
     public AI(Registry r, Actor a) {
         registry = r;
         actor = a;
 
-        goals = new ArrayList<Goal>();
+        goals = new ArrayList<>();
     }
 
     public void setTransient(Actor a, Registry rg) {
@@ -99,7 +98,6 @@ public class AI implements Serializable {
                     previousGoal.terminate();
                 }
                 currentGoal.activate();
-                changed = true;
             }
 
             if (currentGoal != null) {
@@ -135,34 +133,30 @@ public class AI implements Serializable {
     }
 
     public void removeGoal(String goalType) {
-        if (goals.size() > 0) {
+        if (!goals.isEmpty()) {
             //terminate sub goals
             for (int i = 0; i < goals.size(); i++) {
                 Goal goal = goals.get(i);
-                if (goal != null) {
-                    System.out.println("Goal: " + goal.getGoalType());
-                    if (goal.getGoalType().equals(goalType)) {
-                        System.out.println("Goal Terminated");
-                        goal.terminate();
-                    }
+                if (goal != null && goal.getGoalType().equals(goalType)) {
+                    //System.out.println("Goal: " + goal.getGoalType());
+                    //System.out.println("Goal Terminated");
+                    goal.terminate();
                 }
             }
 
             //destroy sub goals
             for (int i = 0; i < goals.size(); i++) {
                 Goal goal = goals.get(i);
-                if (goal != null) {
-                    if (goal.getGoalType().equals(goalType)) {
-                        System.out.println("Goal Terminated");
-                        goals.remove(i);
-                    }
+                if (goal != null && goal.getGoalType().equals(goalType)) {
+                    //System.out.println("Goal Terminated");
+                    goals.remove(i);
                 }
             }
         }
     }
 
     public void clearGoals() {
-        if (goals.size() > 0) {
+        if (!goals.isEmpty()) {
             //terminate sub goals
             for (int i = 0; i < goals.size(); i++) {
                 Goal goal = goals.get(i);
@@ -245,11 +239,11 @@ public class AI implements Serializable {
         return actor;
     }
 
-    private void readObject(ObjectInputStream aInputStream) throws Exception {
+    private void readObject(ObjectInputStream aInputStream) throws IOException, ClassNotFoundException {
         aInputStream.defaultReadObject();
     }
 
-    private void writeObject(ObjectOutputStream aOutputStream) throws Exception {
+    private void writeObject(ObjectOutputStream aOutputStream) throws IOException {
         aOutputStream.defaultWriteObject();
     }
 }

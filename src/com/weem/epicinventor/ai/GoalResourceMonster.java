@@ -59,7 +59,7 @@ public class GoalResourceMonster extends Goal {
         Monster actor = (Monster) ai.getActor();
         Player player = registry.getClosestPlayer(actor.getCenterPoint(), actor.getMaxAggroRange());
 
-        if (actor == null || player == null) {
+        if (player == null) {
             return;
         }
 
@@ -136,9 +136,7 @@ public class GoalResourceMonster extends Goal {
             if (actor.getCenterPoint().distance(targetPoint) <= 100) {
                 return true;
             } else {
-                if (actor != null && targetPoint != null) {
-                    actor.moveTowardsPoint(targetPoint);
-                }
+                actor.moveTowardsPoint(targetPoint);
             }
         } else {
             if (player != null) {

@@ -74,11 +74,11 @@ public class WeaponType implements Serializable {
         return comesBack;
     }
 
-    private void readObject(ObjectInputStream aInputStream) throws Exception {
+    private void readObject(ObjectInputStream aInputStream) throws IOException, ClassNotFoundException {
         aInputStream.defaultReadObject();
     }
 
-    private void writeObject(ObjectOutputStream aOutputStream) throws Exception {
+    private void writeObject(ObjectOutputStream aOutputStream) throws IOException {
         aOutputStream.defaultWriteObject();
     }
 }

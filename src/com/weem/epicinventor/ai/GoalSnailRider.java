@@ -4,7 +4,6 @@ import com.weem.epicinventor.*;
 import com.weem.epicinventor.actor.*;
 import com.weem.epicinventor.actor.monster.*;
 
-import com.weem.epicinventor.utility.EIError;
 import com.weem.epicinventor.utility.Rand;
 import java.awt.*;
 
@@ -24,7 +23,7 @@ public class GoalSnailRider extends Goal {
     public enum SnailRiderState {
 
         FLY_AROUND, FLY_UP, DIVE, FLY_AWAY
-    };
+    }
 
     public GoalSnailRider(AI a, Registry r, String t, float b) {
         super(a, r, t, b);
@@ -62,9 +61,9 @@ public class GoalSnailRider extends Goal {
         SnailRider actor = (SnailRider) ai.getActor();
         Player player = registry.getClosestPlayer(actor.getCenterPoint(), actor.getMaxAggroRange());
 
-        if (actor == null) {
-            return;
-        }
+        // if (actor == null) {
+        //     return;
+        // }
 
         switch (snailRiderState) {
             case FLY_AROUND:
@@ -99,7 +98,9 @@ public class GoalSnailRider extends Goal {
                 }
                 break;
             case DIVE:
-                targetPoint = player.getCenterPoint();
+                if (targetPoint != null) {
+                    targetPoint = player.getCenterPoint();
+                }
                 if (doFly(actor, player)) {
                     actor.stopMove();
                     actor.stopAttack();
@@ -125,7 +126,7 @@ public class GoalSnailRider extends Goal {
                 break;
         }
         
-        System.out.println(targetPoint);
+        //System.out.println(targetPoint);
 
         lastHP = actor.getHitPoints();
     }
@@ -138,9 +139,7 @@ public class GoalSnailRider extends Goal {
             if (actor.getCenterPoint().distance(targetPoint) <= 100) {
                 return true;
             } else {
-                if (actor != null && targetPoint != null) {
-                    actor.moveTowardsPoint(targetPoint);
-                }
+                actor.moveTowardsPoint(targetPoint);
             }
         } else {
             if (player != null) {
@@ -152,12 +151,8 @@ public class GoalSnailRider extends Goal {
                 }
             }
         }
-
-        if (actor.getMapX() <= 0) {
-            return true;
-        }
-
-        return false;
+        
+        return (actor.getMapX() <= 0);
     }
 
     @Override

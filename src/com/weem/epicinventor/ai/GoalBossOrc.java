@@ -4,7 +4,6 @@ import com.weem.epicinventor.*;
 import com.weem.epicinventor.actor.*;
 import com.weem.epicinventor.actor.monster.*;
 
-import com.weem.epicinventor.utility.EIError;
 import com.weem.epicinventor.utility.Rand;
 import java.awt.*;
 
@@ -179,11 +178,7 @@ public class GoalBossOrc extends Goal {
                 nextMove = registry.currentTime + moveTime;
                 actor.updatePosition();
             } else {
-                if (actor != null && targetPoint != null) {
-                    actor.moveTowardsPoint(targetPoint);
-                } else {
-                    actor.updatePosition();
-                }
+                actor.moveTowardsPoint(targetPoint);
             }
         } else if (registry.currentTime >= nextMove) {
             if (Rand.getRange(1, 3) == 1) {
@@ -208,10 +203,8 @@ public class GoalBossOrc extends Goal {
             if (actor.getCenterPoint().distance(targetPoint) <= 100) {
                 return true;
             } else {
-                if (actor != null && targetPoint != null) {
-                    actor.moveTowardsPoint(targetPoint);
-                    updatedPosition = true;
-                }
+                actor.moveTowardsPoint(targetPoint);
+                updatedPosition = true;
             }
         } else {
             if (player != null) {
@@ -228,11 +221,7 @@ public class GoalBossOrc extends Goal {
             actor.updatePosition();
         }
 
-        if (actor.getMapX() <= 0) {
-            return true;
-        }
-
-        return false;
+        return (actor.getMapX() <= 0);
     }
 
     private boolean doJump(BossOrc actor, Player player) {
@@ -247,11 +236,7 @@ public class GoalBossOrc extends Goal {
                 actor.updatePosition();
                 return true;
             } else {
-                if (actor != null && targetPoint != null) {
-                    actor.jumpTowardsPoint(targetPoint);
-                } else {
-                    actor.updatePosition();
-                }
+                actor.jumpTowardsPoint(targetPoint);
             }
         } else {
             if (player != null) {

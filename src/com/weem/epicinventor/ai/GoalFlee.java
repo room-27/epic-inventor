@@ -5,7 +5,7 @@ import com.weem.epicinventor.actor.*;
 
 public class GoalFlee extends Goal {
 
-    private final static int SAFE_DISTANCE = 200;
+    private static final int SAFE_DISTANCE = 200;
 
     public GoalFlee(AI a, Registry r, String t, float b) {
         super(a, r, t, b);

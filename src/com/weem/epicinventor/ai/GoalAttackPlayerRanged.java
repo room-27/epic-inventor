@@ -6,11 +6,11 @@ import com.weem.epicinventor.actor.monster.*;
 
 public class GoalAttackPlayerRanged extends Goal {
 
-    private static int MAX_DISTANCE;
+    private int maxDistance;
 
     public GoalAttackPlayerRanged(AI a, Registry r, String t, float b) {
         super(a, r, t, b);
-        MAX_DISTANCE = MonsterManager.mobSpawnRangeMax;
+        maxDistance = MonsterManager.mobSpawnRangeMax;
     }
     
     public Player getPlayerToAttack(Monster actor) {
@@ -23,15 +23,15 @@ public class GoalAttackPlayerRanged extends Goal {
 
         //figure out the distance between player and mob
         int actorX = ai.getActor().getMapX();
-        int playerX = registry.getClosestPlayerX(ai.getActor().getCenterPoint(), MAX_DISTANCE);
+        int playerX = registry.getClosestPlayerX(ai.getActor().getCenterPoint(), maxDistance);
         int distance = Math.abs(playerX - actorX);
 
         //see if the mob needs to be attack the player
         //closer the player is, the more the mob wants to attack
-        if (distance >= MAX_DISTANCE || playerX < 0) {
+        if (distance >= maxDistance || playerX < 0) {
             desire = 0;
         } else {
-            desire = 1.0f - ((float) distance / (float) MAX_DISTANCE);
+            desire = 1.0f - ((float) distance / (float) maxDistance);
         }
 
         desire *= bias;
@@ -73,13 +73,11 @@ public class GoalAttackPlayerRanged extends Goal {
             }
         }
 
-        if (player != null) {
-            if (player.getPerimeter().intersects(actor.getPerimeter())) {
-                actor.attack();
-            } else {
-                if (actor.isAttacking()) {
-                    actor.stopAttack();
-                }
+        if (player.getPerimeter().intersects(actor.getPerimeter())) {
+            actor.attack();
+        } else {
+            if (actor.isAttacking()) {
+                actor.stopAttack();
             }
         }
     }

@@ -1,27 +1,25 @@
 package com.weem.epicinventor.ai;
 
 import com.weem.epicinventor.*;
-import com.weem.epicinventor.actor.*;
-
 import java.io.*;
 import java.util.ArrayList;
 
 public abstract class Goal implements Serializable {
 
     protected static final long serialVersionUID = 10000L;
-    transient protected AI ai;
-    transient protected Registry registry;
+    protected transient AI ai;
+    protected transient Registry registry;
     protected String target = "";
     protected float bias;
     protected ArrayList<Goal> subGoals;
     protected boolean active = false;
 
-    public Goal(AI a, Registry r, String t, float b) {
+    protected Goal(AI a, Registry r, String t, float b) {
         ai = a;
         registry = r;
         target = t;
         bias = b;
-        subGoals = new ArrayList<Goal>();
+        subGoals = new ArrayList<>();
     }
 
     public void setTransient(Registry rg, AI a) {
@@ -61,7 +59,7 @@ public abstract class Goal implements Serializable {
     }
 
     public void terminate() {
-        if (subGoals.size() > 0) {
+        if (!subGoals.isEmpty()) {
             //terminate sub goals
             for (int i = 0; i < subGoals.size(); i++) {
                 Goal subGoal = subGoals.get(i);
@@ -95,11 +93,11 @@ public abstract class Goal implements Serializable {
         return d;
     }
     
-    private void readObject(ObjectInputStream aInputStream) throws Exception {
+    private void readObject(ObjectInputStream aInputStream) throws IOException, ClassNotFoundException {
         aInputStream.defaultReadObject();
     }
 
-    private void writeObject(ObjectOutputStream aOutputStream) throws Exception {
+    private void writeObject(ObjectOutputStream aOutputStream) throws IOException {
         aOutputStream.defaultWriteObject();
     }
 }

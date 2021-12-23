@@ -1,6 +1,7 @@
 package com.weem.epicinventor.actor.monster;
 
 import com.weem.epicinventor.*;
+import com.weem.epicinventor.GameController.MultiplayerMode;
 import com.weem.epicinventor.actor.*;
 import com.weem.epicinventor.ai.*;
 import com.weem.epicinventor.drop.*;
@@ -15,11 +16,12 @@ import java.awt.geom.AffineTransform;
 import java.io.*;
 import java.util.*;
 import java.util.ArrayList;
+import java.util.Map.Entry;
 
-public abstract class Monster extends Actor implements Serializable {
+public abstract class Monster extends Actor {
 
     private static final long serialVersionUID = 10000L;
-    transient protected MonsterManager monsterManager;
+    protected transient MonsterManager monsterManager;
     protected DropChanceCollection dropChances;
     protected AI ai;
     protected String name;
@@ -29,20 +31,21 @@ public abstract class Monster extends Actor implements Serializable {
     protected int touchDamage = 10;
     protected int meleeDamage = 10;
     protected int meleeSpeed = 1000;
-    protected float mapXMin, mapXMax;
+    protected float mapXMin;
+    protected float mapXMax;
     protected boolean isInPanel;
     protected static int levelWeights[];
     protected int groundLevel;
     protected boolean isDirty;
     protected long nextSoundPlay;
     protected int playerDamage;
-    protected final static int MIN_X_SPAWN = 800;
+    protected static final int MIN_X_SPAWN = 800;
     protected int placeableDamage;
     protected int level;
     protected boolean hideDisplayName = false;
     protected float difficultyFactor = 0.50f;
 
-    public Monster(MonsterManager mm, Registry rg, String im, String st, int x, int y, int minDist, int maxDist, boolean spawnTop) {
+    protected Monster(MonsterManager mm, Registry rg, String im, String st, int x, int y, int minDist, int maxDist, boolean spawnTop) {
         super(mm, rg, im, x, y);
 
         monsterManager = mm;
@@ -83,9 +86,10 @@ public abstract class Monster extends Actor implements Serializable {
         int dist = Rand.getRange(minDist, maxDist);
         int angle = Rand.getRange(0, 360);
         Point retP = new Point(-1, -1);
-
-        int x, y, newDist;
-        for (int i = 0; i < 360; i += 20) {
+        int x;
+        int y;
+        int newDist;
+        for (double i = 0; i < 360; i += 20) {
             x = (int) (dist * Math.cos(Math.toRadians(angle + i))) + p.x;
             y = (int) (dist * Math.sin(Math.toRadians(angle + i))) + p.y;
             if (x >= MIN_X_SPAWN && y > 0) {
@@ -95,20 +99,17 @@ public abstract class Monster extends Actor implements Serializable {
                     y = monsterManager.findNextFloor(x, y, height + BlockManager.getBlockHeight() * 4);
                 }
                 newDist = (int) Math.sqrt(Math.pow(Math.abs(p.x - x), 2.0f) + Math.pow(Math.abs(p.y - y), 2.0f));
-                if (newDist > minDist && newDist < maxDist) {
-                    if (!monsterManager.doesRectContainBlocks(x, y, width, height)) {
-                        boolean touchingPlaceable = false;
-                        Placeable placeable = registry.getPlaceableManager().getClosest(new Point(x, y));
-                        if (placeable != null) {
-                            if (placeable.getPerimeter().intersects(new Rectangle(x, y, 120, 120))) {
-                                touchingPlaceable = true;
-                            }
-                        }
-                        if (!touchingPlaceable) {
-                            retP.x = x;
-                            retP.y = y;
-                            break;
-                        }
+                if (newDist > minDist && newDist < maxDist
+                && !monsterManager.doesRectContainBlocks(x, y, width, height)) {
+                    boolean touchingPlaceable = false;
+                    Placeable placeable = registry.getPlaceableManager().getClosest(new Point(x, y));
+                    if (placeable != null && placeable.getPerimeter().intersects(new Rectangle(x, y, 120, 120))) {
+                        touchingPlaceable = true;
+                    }
+                    if (!touchingPlaceable) {
+                        retP.x = x;
+                        retP.y = y;
+                        break;
                     }
                 }
             }
@@ -233,9 +234,9 @@ public abstract class Monster extends Actor implements Serializable {
         }
 
         //hp varies 10% based on difficulty rating
-        float variance = (float) totalHitPoints * 0.10f;
+        float variance = totalHitPoints * 0.10f;
         variance *= 1.00f - difficultyFactor;
-        totalHitPoints = (int) ((float) totalHitPoints - variance);
+        totalHitPoints = (int) (totalHitPoints - variance);
 
         hitPoints = totalHitPoints;
     }
@@ -316,7 +317,7 @@ public abstract class Monster extends Actor implements Serializable {
             return 0;
         }
 
-        damage -= Math.floor(getArmorPoints() / 5);
+        damage -= getArmorPoints() / 5;
 
         registerAttacker(a, damage, fromPlaceable);
 
@@ -327,19 +328,18 @@ public abstract class Monster extends Actor implements Serializable {
         hitPoints -= damage;
         registry.getIndicatorManager().createIndicator(mapX + (width / 2), mapY + 50, "-" + Integer.toString(damage));
         if (sound) {
-            SoundClip cl = new SoundClip(registry, "Monster/Hurt" + name + Rand.getRange(1, 2), getCenterPoint());
+            //SoundClip cl = new SoundClip(registry, "Monster/Hurt" + name + Rand.getRange(1, 2), getCenterPoint());
         }
 
-        if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-            if (registry.getNetworkThread().readyForUpdates()) {
-                UpdateMonster um = new UpdateMonster(this.getId());
-                um.mapX = this.getMapX();
-                um.mapY = this.getMapY();
-                um.action = "ApplyDamage";
-                um.dataInt = damage;
-                um.actor = a;
-                registry.getNetworkThread().sendData(um);
-            }
+        if (registry.getGameController().multiplayerMode == MultiplayerMode.SERVER && registry.getNetworkThread() != null
+        && registry.getNetworkThread().readyForUpdates()) {
+            UpdateMonster um = new UpdateMonster(this.getId());
+            um.mapX = this.getMapX();
+            um.mapY = this.getMapY();
+            um.action = "ApplyDamage";
+            um.dataInt = damage;
+            um.actor = a;
+            registry.getNetworkThread().sendData(um);
         }
 
         return damage;
@@ -363,10 +363,12 @@ public abstract class Monster extends Actor implements Serializable {
         return Color.RED;
     }
 
+    @Override
     public int getXMoveSize() {
         return xMoveSize;
     }
 
+    @Override
     public void setXMoveSize(int s) {
         xMoveSize = s;
     }
@@ -392,11 +394,7 @@ public abstract class Monster extends Actor implements Serializable {
     }
 
     public boolean isAttacking() {
-        if (actionMode == ActionMode.ATTACKING) {
-            return true;
-        } else {
-            return false;
-        }
+        return (actionMode == ActionMode.ATTACKING);
     }
 
     public boolean getIsInPanel() {
@@ -433,13 +431,9 @@ public abstract class Monster extends Actor implements Serializable {
     }
 
     public Damage getMonsterTouchDamage(Rectangle r, int x) {
-        if (hitPoints > 0) {
-            if (spriteRect != null && r != null) {
-                if (spriteRect.intersects(r)) {
-                    playerDamage += touchDamage;
-                    return new Damage(this, touchDamage);
-                }
-            }
+        if (hitPoints > 0 && spriteRect != null && r != null && spriteRect.intersects(r)) {
+            playerDamage += touchDamage;
+            return new Damage(this, touchDamage);
         }
 
         return null;
@@ -457,12 +451,10 @@ public abstract class Monster extends Actor implements Serializable {
         boolean ret = false;
         Goal g = ai.getCurrentGoal();
 
-        if (g != null) {
-            if (g.getGoalType().equals("GoalAttackPlayer")) {
-                Player player = ((GoalAttackPlayer) g).getPlayerToAttack(this);
-                if (player == p) {
-                    ret = true;
-                }
+        if (g != null && g.getGoalType().equals("GoalAttackPlayer")) {
+            Player player = ((GoalAttackPlayer) g).getPlayerToAttack(this);
+            if (player == p) {
+                ret = true;
             }
         }
         return ret;
@@ -507,10 +499,10 @@ public abstract class Monster extends Actor implements Serializable {
         //figure out the total damage and the damage form the given player
         if (attackers != null) {
             try {
-                for (Actor key : attackers.keySet()) {
-                    int value = attackers.get(key);
+                for (Entry<Actor, Integer> entry : attackers.entrySet()) {
+                    int value = entry.getValue();
                     total += value;
-                    if (a == key) {
+                    if (a == entry.getKey()) {
                         player += value;
                     }
                 }
@@ -522,7 +514,7 @@ public abstract class Monster extends Actor implements Serializable {
         player -= placeableDamage;
 
         if (total > 0 && player > 0) {
-            float totalXP = (float) getXPTotalValue(a);
+            float totalXP = getXPTotalValue(a);
             return (int) (((float) player / (float) total) * totalXP);
         }
         return 0;
@@ -564,9 +556,9 @@ public abstract class Monster extends Actor implements Serializable {
 
         if (level > 0 && level <= xpTable.length) {
             //xp varies 10% based on difficulty rating
-            float variance = (float) xpTable[level] * 0.10f;
+            float variance = xpTable[level] * 0.10f;
             variance *= 1.00f - difficultyFactor;
-            return (int) ((float) xpTable[level] - variance);
+            return (int) (xpTable[level] - variance);
         } else {
             return 0;
         }
@@ -582,39 +574,36 @@ public abstract class Monster extends Actor implements Serializable {
 
         debugInfo = "";
 
-        if (isActive && isAnimating) {
-            if (animationFrameUpdateTime <= registry.currentTime) {
-                currentAnimationFrame++;
-                if (currentAnimationFrame >= numAnimationFrames) {
-                    currentAnimationFrame = 0;
-                }
-                animationFrameUpdateTime = registry.currentTime + animationFrameDuration;
+        if (isActive && isAnimating && animationFrameUpdateTime <= registry.currentTime) {
+            currentAnimationFrame++;
+            if (currentAnimationFrame >= numAnimationFrames) {
+                currentAnimationFrame = 0;
             }
+            animationFrameUpdateTime = registry.currentTime + animationFrameDuration;
         }
 
         if (hitPoints > 0) {
-            if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            if (registry.getGameController().multiplayerMode != MultiplayerMode.CLIENT) {
                 if (knockBackX > 0) {
                     mapX += checkCollide(knockBackX);
                 } else if (knockBackX < 0) {
                     mapX -= checkCollide(knockBackX);
                 } else {
-                    if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.CLIENT) {
+                    if (registry.getGameController().multiplayerMode == MultiplayerMode.CLIENT) {
                         ai.process(true);
                     } else {
                         ai.process();
                     }
                     if (ai.getChanged()) {
                         ai.setChanged(false);
-                        if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                            if (registry.getNetworkThread().readyForUpdates()) {
-                                UpdateMonster um = new UpdateMonster(this.getId());
-                                um.mapX = this.getMapX();
-                                um.mapY = this.getMapY();
-                                um.previousGoal = ai.getPreviousGoal();
-                                um.currentGoal = ai.getCurrentGoal();
-                                registry.getNetworkThread().sendData(um);
-                            }
+                        if (registry.getGameController().multiplayerMode == MultiplayerMode.SERVER && registry.getNetworkThread() != null
+                        && registry.getNetworkThread().readyForUpdates()) {
+                            UpdateMonster um = new UpdateMonster(this.getId());
+                            um.mapX = this.getMapX();
+                            um.mapY = this.getMapY();
+                            um.previousGoal = ai.getPreviousGoal();
+                            um.currentGoal = ai.getCurrentGoal();
+                            registry.getNetworkThread().sendData(um);
                         }
                     }
                 }
@@ -636,21 +625,20 @@ public abstract class Monster extends Actor implements Serializable {
                 }
             }
         } else {
-            if (registry.getGameController().multiplayerMode == registry.getGameController().multiplayerMode.SERVER && registry.getNetworkThread() != null) {
-                if (registry.getNetworkThread().readyForUpdates()) {
-                    UpdateMonster um = new UpdateMonster(this.getId());
-                    um.mapX = this.getMapX();
-                    um.mapY = this.getMapY();
-                    um.action = "Die";
-                    registry.getNetworkThread().sendData(um);
-                }
+            if (registry.getGameController().multiplayerMode == MultiplayerMode.SERVER && registry.getNetworkThread() != null
+            && registry.getNetworkThread().readyForUpdates()) {
+                UpdateMonster um = new UpdateMonster(this.getId());
+                um.mapX = this.getMapX();
+                um.mapY = this.getMapY();
+                um.action = "Die";
+                registry.getNetworkThread().sendData(um);
             }
 
-            SoundClip cl = new SoundClip(registry, "Monster/Die" + name, getCenterPoint());
+            //SoundClip cl = new SoundClip(registry, "Monster/Die" + name, getCenterPoint());
             isDead = true;
             ai.terminate();
 
-            if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+            if (registry.getGameController().multiplayerMode != MultiplayerMode.CLIENT) {
                 ArrayList<Drop> drops = dropChances.generateDrops();
                 if (drops.size() > 0) {
                     monsterManager.dropLoot(this, mapX + (width / 2), mapY + 32, drops);
@@ -660,8 +648,7 @@ public abstract class Monster extends Actor implements Serializable {
 
             BufferedImage im = registry.getImageLoader().getImage(image);
             if (facing == Facing.LEFT) {
-                AffineTransform tx = AffineTransform.getScaleInstance(1, -1);
-                tx = AffineTransform.getScaleInstance(-1, 1);
+                AffineTransform tx = AffineTransform.getScaleInstance(-1, 1);
                 tx.translate(-width, 0);
                 AffineTransformOp op = new AffineTransformOp(tx, AffineTransformOp.TYPE_BILINEAR);
                 BufferedImage imLeft = op.filter(im, null);
@@ -673,7 +660,7 @@ public abstract class Monster extends Actor implements Serializable {
             }
         }
 
-        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
+        if (registry.getGameController().multiplayerMode != MultiplayerMode.CLIENT) {
             if (vertMoveMode == VertMoveMode.JUMPING) {
                 updateJumping();
             } else if (vertMoveMode == VertMoveMode.FLYING) {
@@ -686,7 +673,7 @@ public abstract class Monster extends Actor implements Serializable {
             mapY = monsterManager.checkMapY(mapY, height);
         }
 
-        Player p = registry.getPlayerManager().getCurrentPlayer();
+        // Player p = registry.getPlayerManager().getCurrentPlayer();
 
         if (spriteRect.intersects(manager.getPanelRect())) {
             isInPanel = true;
@@ -709,24 +696,18 @@ public abstract class Monster extends Actor implements Serializable {
         //debugInfo = Boolean.toString(isInPanel)
         //showGoals = true;
 
-        if (registry.getGameController().multiplayerMode != registry.getGameController().multiplayerMode.CLIENT) {
-            if (vertMoveMode != VertMoveMode.FALLING) {
-                checkIfFalling();
-            }
+        if (registry.getGameController().multiplayerMode != MultiplayerMode.CLIENT && vertMoveMode != VertMoveMode.FALLING) {
+            checkIfFalling();
         }
 
         updateImage();
     }
 
     protected boolean isInside(Point p) {
-        if (p.x >= mapX
+        return (p.x >= mapX
                 && p.x <= (mapX + width)
                 && p.y >= mapY
-                && p.y <= (mapY + height)) {
-            return true;
-        }
-
-        return false;
+                && p.y <= (mapY + height));
     }
 
     public void updateLong() {
@@ -736,10 +717,8 @@ public abstract class Monster extends Actor implements Serializable {
 
         if (registry.getClosestPlayer(getCenterPoint(), MonsterManager.mobSpawnRangeMin * 2) == null) {
             Point p = getCenterPoint();
-            if (p.x > 0 && p.y > 0) {
-                if (!registry.getPlaceableManager().isPlaceableWithin(getCenterPoint(), MonsterManager.mobSpawnRangeMin * 2)) {
-                    isDirty = true;
-                }
+            if (p.x > 0 && p.y > 0 && !registry.getPlaceableManager().isPlaceableWithin(getCenterPoint(), MonsterManager.mobSpawnRangeMin * 2)) {
+                isDirty = true;
             }
         }
         if (nextSoundPlay <= registry.currentTime) {
@@ -788,8 +767,7 @@ public abstract class Monster extends Actor implements Serializable {
 
             if (im != null) {
                 if (facing == Facing.LEFT) {
-                    AffineTransform tx = AffineTransform.getScaleInstance(1, -1);
-                    tx = AffineTransform.getScaleInstance(-1, 1);
+                    AffineTransform tx = AffineTransform.getScaleInstance(-1, 1);
                     tx.translate(-width, 0);
                     AffineTransformOp op = new AffineTransformOp(tx, AffineTransformOp.TYPE_BILINEAR);
                     BufferedImage imLeft = op.filter(im, null);
@@ -894,11 +872,11 @@ public abstract class Monster extends Actor implements Serializable {
                     if (im != null) {
                         g.drawImage(im, xPos, yPos, null);
                     }
-                    i++;
+                    //i++;
                 }
             }
 
-            if (hideDisplayName == false) {
+            if (!hideDisplayName) {
                 /*
                  * xPos = manager.mapToPanelX(this.getCenterPoint().x - 81);
                  * yPos = manager.mapToPanelY(mapY + height);
@@ -918,8 +896,8 @@ public abstract class Monster extends Actor implements Serializable {
                 FontMetrics fm = g.getFontMetrics();
                 int messageWidth = fm.stringWidth(displayName + " (" + level + ")");
 
-                xPos = monsterManager.mapToPanelX((int) mapX + (width / 2) - (messageWidth / 2));
-                yPos = monsterManager.mapToPanelY((int) mapY + height);
+                xPos = monsterManager.mapToPanelX(mapX + (width / 2) - (messageWidth / 2));
+                yPos = monsterManager.mapToPanelY(mapY + height);
                 yPos = monsterManager.getPHeight() - yPos;
 
                 if (level == -1) {
@@ -1076,11 +1054,11 @@ public abstract class Monster extends Actor implements Serializable {
         level = udpUpdate.level;
     }
 
-    private void readObject(ObjectInputStream aInputStream) throws Exception {
+    private void readObject(ObjectInputStream aInputStream) throws IOException, ClassNotFoundException {
         aInputStream.defaultReadObject();
     }
 
-    private void writeObject(ObjectOutputStream aOutputStream) throws Exception {
+    private void writeObject(ObjectOutputStream aOutputStream) throws IOException {
         aOutputStream.defaultWriteObject();
     }
 }

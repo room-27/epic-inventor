@@ -2,11 +2,8 @@ package com.weem.epicinventor.ai;
 
 import com.weem.epicinventor.*;
 import com.weem.epicinventor.actor.*;
-import com.weem.epicinventor.actor.monster.*;
 import com.weem.epicinventor.actor.oobaboo.*;
 
-import com.weem.epicinventor.utility.EIError;
-import com.weem.epicinventor.utility.Rand;
 import java.awt.*;
 
 public class GoalOobabooHealer extends Goal {
@@ -42,10 +39,6 @@ public class GoalOobabooHealer extends Goal {
 
         OobabooHealer actor = (OobabooHealer) ai.getActor();
         oobabooHealerState = OobabooHealerState.STARING;
-
-        if (actor == null) {
-            return;
-        }
     }
 
     @Override

@@ -6,7 +6,7 @@ import com.weem.epicinventor.actor.monster.*;
 
 public class GoalAttackPlayer extends Goal {
 
-    private static int MAX_DISTANCE;
+    private int MAX_DISTANCE;
 
     public GoalAttackPlayer(AI a, Registry r, String t, float b) {
         super(a, r, t, b);
@@ -65,13 +65,11 @@ public class GoalAttackPlayer extends Goal {
             actor.moveTowardsPoint(player.getCenterPoint());
         }
 
-        if (player != null) {
-            if (player.getPerimeter().intersects(actor.getPerimeter())) {
-                actor.attack();
-            } else {
-                if (actor.isAttacking()) {
-                    actor.stopAttack();
-                }
+        if (player.getPerimeter().intersects(actor.getPerimeter())) {
+            actor.attack();
+        } else {
+            if (actor.isAttacking()) {
+                actor.stopAttack();
             }
         }
     }

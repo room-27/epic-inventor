@@ -4,11 +4,6 @@ import com.weem.epicinventor.*;
 import com.weem.epicinventor.actor.*;
 import com.weem.epicinventor.actor.monster.*;
 import com.weem.epicinventor.actor.oobaboo.*;
-import com.weem.epicinventor.resource.*;
-
-import com.weem.epicinventor.utility.EIError;
-import com.weem.epicinventor.utility.Rand;
-
 import java.awt.*;
 import java.awt.geom.Arc2D;
 
@@ -50,10 +45,6 @@ public class GoalOobabooWarrior extends Goal {
 
         OobabooWarrior actor = (OobabooWarrior) ai.getActor();
         oobabooWarriorState = OobabooWarriorState.STARING;
-
-        if (actor == null) {
-            return;
-        }
     }
 
     @Override
@@ -65,7 +56,7 @@ public class GoalOobabooWarrior extends Goal {
         
         Monster m = registry.getMonsterManager().getClosestWithinMax(actor.getCenterPoint(), 1000);
 
-        if (actor == null || player == null) {
+        if (player == null) {
             return;
         }
 
@@ -125,10 +116,8 @@ public class GoalOobabooWarrior extends Goal {
                     Arc2D.Double attackArc = actor.getAttackArc(actor.getAttackRange());
                     if (attackArc != null) {
                         Rectangle sr = monster.getSpriteRect();
-                        if (sr != null) {
-                            if (attackArc.intersects(sr)) {
-                                shouldAttack = true;
-                            }
+                        if (sr != null && attackArc.intersects(sr)) {
+                            shouldAttack = true;
                         }
                     }
                     if (shouldAttack) {

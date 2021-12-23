@@ -2,8 +2,6 @@ package com.weem.epicinventor.ai;
 
 import com.weem.epicinventor.*;
 import com.weem.epicinventor.actor.*;
-import com.weem.epicinventor.utility.*;
-
 import java.awt.*;
 
 public class GoalFollow extends Goal {
@@ -67,7 +65,7 @@ public class GoalFollow extends Goal {
         
         Point p = player.getCenterPoint();
         
-        actor.moveTowardsPoint(player.getCenterPoint());
+        actor.moveTowardsPoint(p);
     }
 
     @Override

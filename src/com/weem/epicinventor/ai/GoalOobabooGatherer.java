@@ -2,11 +2,9 @@ package com.weem.epicinventor.ai;
 
 import com.weem.epicinventor.*;
 import com.weem.epicinventor.actor.*;
-import com.weem.epicinventor.actor.monster.*;
 import com.weem.epicinventor.actor.oobaboo.*;
 import com.weem.epicinventor.resource.*;
 
-import com.weem.epicinventor.utility.EIError;
 import com.weem.epicinventor.utility.Rand;
 import java.awt.*;
 
@@ -47,10 +45,6 @@ public class GoalOobabooGatherer extends Goal {
 
         OobabooGatherer actor = (OobabooGatherer) ai.getActor();
         oobabooGathererState = OobabooGathererState.LEAVING;
-
-        if (actor == null) {
-            return;
-        }
     }
 
     @Override
